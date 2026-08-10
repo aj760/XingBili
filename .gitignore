@@ -1,0 +1,30 @@
+# Android/Gradle
+.gradle/
+build/
+local.properties
+**/build/
+
+# IntelliJ / Android Studio
+.idea/
+*.iml
+
+# Kotlin
+*.kotlin_metadata
+
+# OS
+.DS_Store
+
+*.apk
+keystore/
+docs/
+libs/
+
+# 本地备份与构建日志（非源码，不入库）
+*.log
+.gradle.bak/
+.gradle.bak1/
+.gradle.bak205/
+.gradle.rebootbak/
+
+# 编译必需的 ijkplayer 本地 aar 必须入库，否则 clone 后无法构建
+!app/libs/
