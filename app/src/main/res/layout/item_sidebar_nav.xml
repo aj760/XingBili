@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/card"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginVertical="@dimen/sidebar_nav_card_margin_v"
+    android:layout_marginHorizontal="@dimen/sidebar_nav_card_margin_h"
+    android:clickable="true"
+    android:focusable="true"
+    android:stateListAnimator="@animator/blbl_focus_scale"
+    app:cardBackgroundColor="@android:color/transparent"
+    app:cardCornerRadius="10dp"
+    app:cardElevation="0dp"
+    app:strokeColor="?attr/blblFocusStrokeFocusOnlyColor"
+    app:strokeWidth="2dp">
+
+    <LinearLayout
+        android:id="@+id/container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:paddingVertical="@dimen/sidebar_nav_container_padding_v">
+
+        <ImageView
+            android:id="@+id/iv_icon"
+            android:layout_width="@dimen/sidebar_nav_icon_size"
+            android:layout_height="@dimen/sidebar_nav_icon_size"
+            android:contentDescription="@string/app_name" />
+
+        <TextView
+            android:id="@+id/tv_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/sidebar_nav_label_margin_top"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="?attr/blblOnPageBackdrop"
+            android:textSize="@dimen/sidebar_nav_label_text_size"
+            android:visibility="gone" />
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

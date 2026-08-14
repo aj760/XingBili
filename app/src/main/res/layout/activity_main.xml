@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/blblPageBackdrop">
+
+    <LinearLayout
+        android:id="@+id/sidebar"
+        android:layout_width="@dimen/sidebar_width"
+        android:layout_height="0dp"
+        android:background="@android:color/transparent"
+        android:clipChildren="false"
+        android:orientation="vertical"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/iv_sidebar_user"
+            android:layout_width="@dimen/sidebar_user_size"
+            android:layout_height="@dimen/sidebar_user_size"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="@dimen/sidebar_user_margin_top"
+            android:clickable="true"
+            android:focusable="true"
+            android:stateListAnimator="@animator/blbl_focus_scale"
+            android:contentDescription="@string/app_name"
+            android:src="@android:drawable/sym_def_app_icon"
+            app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay_Blbl_Circular"
+            app:strokeColor="?attr/blblFocusStrokeColor"
+            app:strokeWidth="2dp" />
+
+        <TextView
+            android:id="@+id/btn_sidebar_login"
+            android:layout_width="@dimen/sidebar_login_size"
+            android:layout_height="@dimen/sidebar_login_size"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="@dimen/sidebar_login_margin_top"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:includeFontPadding="false"
+            android:stateListAnimator="@animator/blbl_focus_scale"
+            android:text="@string/sidebar_login"
+            android:textColor="?attr/blblOnPageBackdrop"
+            android:textSize="@dimen/sidebar_login_text_size"
+            android:visibility="gone"
+            android:background="@drawable/blbl_login_circle_bg" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recycler_sidebar"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="@dimen/sidebar_nav_margin_top"
+            android:layout_weight="1"
+            android:clipChildren="false"
+            android:clipToPadding="false"
+            android:paddingVertical="0dp" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/btn_sidebar_settings"
+            android:layout_width="@dimen/sidebar_main_settings_size"
+            android:layout_height="@dimen/sidebar_main_settings_size"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="@dimen/sidebar_settings_margin_bottom"
+            android:contentDescription="@string/tab_settings"
+            android:clickable="true"
+            android:focusable="true"
+            android:stateListAnimator="@animator/blbl_focus_scale"
+            android:padding="@dimen/sidebar_main_settings_padding"
+            app:cardBackgroundColor="@android:color/transparent"
+            app:cardCornerRadius="10dp"
+            app:cardElevation="0dp"
+            app:strokeColor="?attr/blblFocusStrokeFocusOnlyColor"
+            app:strokeWidth="2dp">
+
+            <ImageView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:contentDescription="@null"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_nav_settings"
+                app:tint="?attr/blblOnPageBackdropSecondary" />
+        </com.google.android.material.card.MaterialCardView>
+    </LinearLayout>
+
+    <FrameLayout
+        android:id="@+id/main_container"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="?attr/blblContentBackground"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/sidebar"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <include
+        android:id="@+id/user_info_overlay"
+        layout="@layout/dialog_user_info"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

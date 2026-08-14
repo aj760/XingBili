@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="@dimen/player_comment_item_margin_bottom"
+    android:clickable="true"
+    android:focusable="true"
+    android:stateListAnimator="@animator/blbl_focus_scale"
+    app:cardBackgroundColor="@android:color/black"
+    app:cardCornerRadius="@dimen/player_comment_item_corner_radius"
+    app:strokeColor="?attr/blblFocusStrokeColor"
+    app:strokeWidth="@dimen/player_comment_item_stroke_width">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="@dimen/player_comment_item_padding">
+
+        <TextView
+            android:id="@+id/tv_context_tag"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="?attr/blblOnCommentCardSecondary"
+            android:textSize="@dimen/player_comment_context_tag_text_size"
+            android:visibility="gone"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/iv_avatar"
+            android:layout_width="@dimen/player_comment_avatar_size"
+            android:layout_height="@dimen/player_comment_avatar_size"
+            android:layout_marginTop="@dimen/player_comment_avatar_margin_top"
+            android:contentDescription="@string/app_name"
+            android:scaleType="centerCrop"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/tv_context_tag"
+            app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay_Blbl_Circular" />
+
+        <TextView
+            android:id="@+id/tv_user"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/player_comment_user_margin_start"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="?attr/blblOnCommentCard"
+            android:textSize="@dimen/player_comment_user_text_size"
+            android:textStyle="bold"
+            app:layout_constrainedWidth="true"
+            app:layout_constraintHorizontal_bias="0"
+            app:layout_constraintHorizontal_chainStyle="packed"
+            app:layout_constraintEnd_toStartOf="@id/tv_up_badge"
+            app:layout_constraintStart_toEndOf="@id/iv_avatar"
+            app:layout_constraintTop_toTopOf="@id/iv_avatar" />
+
+        <TextView
+            android:id="@+id/tv_up_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="@dimen/player_comment_up_badge_height"
+            android:layout_marginStart="@dimen/player_comment_up_badge_margin_start"
+            android:background="@drawable/bg_comment_up_badge"
+            android:gravity="center"
+            android:includeFontPadding="false"
+            android:minWidth="@dimen/player_comment_up_badge_min_width"
+            android:paddingHorizontal="@dimen/player_comment_up_badge_padding_h"
+            android:text="UP"
+            android:textColor="@color/blbl_blue"
+            android:textSize="@dimen/player_comment_up_badge_text_size"
+            android:textStyle="bold"
+            android:visibility="gone"
+            app:layout_constraintBaseline_toBaselineOf="@id/tv_user"
+            app:layout_constraintEnd_toStartOf="@id/row_header_meta"
+            app:layout_constraintStart_toEndOf="@id/tv_user" />
+
+        <LinearLayout
+            android:id="@+id/row_header_meta"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:baselineAligned="true"
+            android:baselineAlignedChildIndex="0"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            app:layout_constraintBaseline_toBaselineOf="@id/tv_user"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <TextView
+                android:id="@+id/tv_time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="?attr/blblOnCommentCardSecondary"
+                android:textSize="@dimen/player_comment_time_text_size" />
+
+            <ImageView
+                android:id="@+id/iv_like"
+                android:layout_width="@dimen/player_comment_like_icon_size"
+                android:layout_height="@dimen/player_comment_like_icon_size"
+                android:layout_marginStart="@dimen/player_comment_like_icon_margin_start"
+                android:contentDescription="@null"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_action_like"
+                app:tint="?attr/blblOnCommentCardSecondary" />
+
+            <TextView
+                android:id="@+id/tv_like"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/player_comment_like_count_margin_start"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="?attr/blblOnCommentCardSecondary"
+                android:textSize="@dimen/player_comment_meta_text_size"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tv_message"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/player_comment_message_margin_top"
+            android:ellipsize="end"
+            android:maxLines="6"
+            android:textColor="?attr/blblOnCommentCard"
+            android:textSize="@dimen/player_comment_message_text_size"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="@id/tv_user"
+            app:layout_constraintTop_toBottomOf="@id/tv_user" />
+
+        <TextView
+            android:id="@+id/tv_expand"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:paddingTop="@dimen/player_comment_expand_padding_top"
+            android:text="@string/player_comment_expand"
+            android:textColor="@color/blbl_blue"
+            android:textSize="@dimen/player_comment_meta_text_size"
+            android:visibility="gone"
+            app:layout_constraintStart_toStartOf="@id/tv_user"
+            app:layout_constraintTop_toBottomOf="@id/tv_message" />
+
+        <LinearLayout
+            android:id="@+id/row_pictures"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/player_comment_pictures_margin_top"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="@id/tv_user"
+            app:layout_constraintTop_toBottomOf="@id/tv_expand">
+
+            <com.google.android.material.imageview.ShapeableImageView
+                android:id="@+id/iv_picture_1"
+                android:layout_width="@dimen/player_comment_picture_width"
+                android:layout_height="@dimen/player_comment_picture_height"
+                android:layout_marginEnd="@dimen/player_comment_picture_gap"
+                android:contentDescription="@string/app_name"
+                android:scaleType="centerCrop"
+                android:visibility="gone"
+                app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay_Blbl_Rounded" />
+
+            <com.google.android.material.imageview.ShapeableImageView
+                android:id="@+id/iv_picture_2"
+                android:layout_width="@dimen/player_comment_picture_width"
+                android:layout_height="@dimen/player_comment_picture_height"
+                android:layout_marginEnd="@dimen/player_comment_picture_gap"
+                android:contentDescription="@string/app_name"
+                android:scaleType="centerCrop"
+                android:visibility="gone"
+                app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay_Blbl_Rounded" />
+
+            <com.google.android.material.imageview.ShapeableImageView
+                android:id="@+id/iv_picture_3"
+                android:layout_width="@dimen/player_comment_picture_width"
+                android:layout_height="@dimen/player_comment_picture_height"
+                android:contentDescription="@string/app_name"
+                android:scaleType="centerCrop"
+                android:visibility="gone"
+                app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay_Blbl_Rounded" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/row_reply_preview"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingTop="@dimen/player_comment_reply_preview_padding_top"
+            android:visibility="gone"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="@id/tv_user"
+            app:layout_constraintTop_toBottomOf="@id/row_pictures">
+
+            <TextView
+                android:id="@+id/tv_reply_preview_1"
+                android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="?attr/blblOnCommentCardSecondary"
+            android:textSize="@dimen/player_comment_reply_preview_text_size" />
+
+            <TextView
+                android:id="@+id/tv_reply_preview_2"
+                android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/player_comment_reply_preview_margin_top"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="?attr/blblOnCommentCardSecondary"
+            android:textSize="@dimen/player_comment_reply_preview_text_size"
+            android:visibility="gone" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/row_meta"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/player_comment_meta_margin_top"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="@id/tv_user"
+            app:layout_constraintTop_toBottomOf="@id/row_reply_preview">
+
+            <TextView
+                android:id="@+id/tv_reply"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@color/blbl_blue"
+                android:textSize="@dimen/player_comment_meta_text_size"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</com.google.android.material.card.MaterialCardView>

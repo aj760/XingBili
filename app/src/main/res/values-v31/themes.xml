@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Blbl.Launcher.Dark" parent="Theme.Blbl.Base.Dark">
+        <item name="android:windowBackground">@drawable/bg_launcher_window</item>
+        <item name="android:windowSplashScreenBackground">?attr/colorBackground</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_splash_transparent</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@android:color/transparent</item>
+    </style>
+
+    <style name="Theme.Blbl.Launcher.TvPink" parent="Theme.Blbl.Base.PinkLight">
+        <item name="blblAccent">@color/blbl_accent_tv_pink</item>
+        <item name="blblAccentContainer">@color/blbl_accent_tv_pink_container</item>
+        <item name="blblAccentWeak">@color/blbl_accent_tv_pink_weak</item>
+        <item name="blblAccentPressed">@color/blbl_accent_tv_pink_pressed</item>
+        <item name="android:windowBackground">@drawable/bg_launcher_window</item>
+        <item name="android:windowSplashScreenBackground">?attr/colorBackground</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_splash_transparent</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@android:color/transparent</item>
+    </style>
+
+    <style name="Theme.Blbl.Launcher.TvPinkIllustration" parent="Theme.Blbl.Base.TvPinkIllustration">
+        <item name="blblAccent">@color/blbl_accent_classic</item>
+        <item name="blblAccentContainer">@color/blbl_accent_classic_container</item>
+        <item name="blblAccentWeak">@color/blbl_accent_classic_weak</item>
+        <item name="blblAccentPressed">@color/blbl_accent_classic_pressed</item>
+        <item name="android:windowBackground">@drawable/bg_launcher_window</item>
+        <item name="android:windowSplashScreenBackground">?attr/colorBackground</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_splash_transparent</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@android:color/transparent</item>
+    </style>
+</resources>

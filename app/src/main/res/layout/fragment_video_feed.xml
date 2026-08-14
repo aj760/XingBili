@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/feed_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/blblContentBackground"
+    android:focusable="true">
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/feed_recycler"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:focusable="false" />
+
+    <ProgressBar
+        android:id="@+id/feed_loading"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:indeterminate="true"
+        android:focusable="false" />
+
+    <TextView
+        android:id="@+id/feed_status"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:textColor="@android:color/white"
+        android:textSize="20sp"
+        android:visibility="gone" />
+
+    <!-- 一键三连动画浮层（长按 OK 5 秒触发）；子视图由 TripleActionOverlay 在代码中创建 -->
+    <FrameLayout
+        android:id="@+id/feed_triple_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone" />
+
+</FrameLayout>

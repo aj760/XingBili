@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/tv_key_capture"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="?attr/blblFocusBgRound"
+    android:clickable="true"
+    android:focusable="true"
+    android:focusableInTouchMode="true"
+    android:gravity="center"
+    android:lineSpacingExtra="2dp"
+    android:paddingHorizontal="16dp"
+    android:paddingVertical="14dp"
+    android:textColor="?attr/colorOnSurface"
+    android:textSize="18sp" />
+

@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Application-level fallback theme: Default preset (Dark + Violet accent). -->
+    <style name="Theme.Blbl" parent="Theme.Blbl.Base.Dark">
+        <item name="blblAccent">@color/blbl_accent_tv_pink</item>
+        <item name="blblAccentContainer">@color/blbl_accent_tv_pink_container</item>
+        <item name="blblAccentWeak">@color/blbl_accent_tv_pink_weak</item>
+        <item name="blblAccentPressed">@color/blbl_accent_tv_pink_pressed</item>
+    </style>
+
+    <style name="Theme.Blbl.Base" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- Accent (overridden by preset overlay). -->
+        <item name="blblAccent">@color/blbl_purple</item>
+        <item name="blblAccentContainer">@color/blbl_accent_violet_container</item>
+        <item name="blblAccentWeak">@color/blbl_accent_violet_weak</item>
+        <item name="blblAccentPressed">@color/blbl_accent_violet_pressed</item>
+        <item name="blblPageBackdrop">?attr/colorBackground</item>
+        <item name="blblDialogSurface">?attr/colorSurface</item>
+        <item name="blblOnPageBackdrop">?attr/colorOnSurface</item>
+        <item name="blblOnPageBackdropSecondary">?android:attr/textColorSecondary</item>
+
+        <item name="colorSecondary">?attr/blblAccent</item>
+        <item name="colorOnSecondary">@android:color/white</item>
+        <item name="colorControlActivated">?attr/blblAccent</item>
+        <item name="colorControlHighlight">?attr/blblAccentContainer</item>
+
+        <!-- Focus resources (overridden by Player fixed theme). -->
+        <item name="blblFocusBgRound">@drawable/blbl_focus_bg_round_white</item>
+        <item name="blblFocusListSelectorRound">@drawable/blbl_focus_list_selector_round_white</item>
+        <item name="blblFocusStrokeColor">@color/blbl_focus_stroke_white</item>
+        <item name="blblFocusStrokeFocusOnlyColor">@color/blbl_focus_stroke_focus_only_white</item>
+
+        <!-- Comment card text (card is always black, so text must always be light). -->
+        <item name="blblOnCommentCard">@color/blbl_comment_card_text</item>
+        <item name="blblOnCommentCardSecondary">@color/blbl_comment_card_text_secondary</item>
+
+        <!-- Focus hint bubble: semi-transparent dark surface with light text, readable over
+             any player background. -->
+        <item name="focusHintBackground">@color/blbl_focus_hint_bg</item>
+        <item name="focusHintText">@color/blbl_focus_hint_text</item>
+
+        <!-- "已看过" badge on video cards: same dark/light pair as the focus hint for
+             consistency across the app. -->
+        <item name="watchedBadgeBackground">@color/blbl_watched_badge_bg</item>
+        <item name="watchedBadgeText">@color/blbl_watched_badge_text</item>
+
+        <item name="materialAlertDialogTheme">@style/ThemeOverlay.Blbl.MaterialAlertDialog</item>
+        <item name="alertDialogTheme">@style/ThemeOverlay.Blbl.MaterialAlertDialog</item>
+        <item name="android:alertDialogTheme">@style/ThemeOverlay.Blbl.MaterialAlertDialog</item>
+
+        <item name="android:forceDarkAllowed" tools:targetApi="q">true</item>
+    </style>
+
+    <style name="Theme.Blbl.Base.Dark" parent="Theme.Blbl.Base">
+        <item name="colorPrimary">@color/blbl_surface</item>
+        <item name="colorPrimaryVariant">@color/blbl_surface</item>
+        <item name="colorOnPrimary">@color/blbl_text</item>
+
+        <item name="android:colorBackground">@color/blbl_bg</item>
+        <item name="colorBackground">@color/blbl_bg</item>
+        <item name="blblContentBackground">?attr/colorBackground</item>
+        <item name="colorSurface">@color/blbl_surface</item>
+        <item name="colorOnSurface">@color/blbl_text</item>
+        <item name="blblDialogSurface">@color/blbl_surface</item>
+        <item name="blblOnPageBackdrop">@color/blbl_text</item>
+        <item name="blblOnPageBackdropSecondary">@color/blbl_text_secondary</item>
+
+        <item name="android:statusBarColor">@color/blbl_bg</item>
+        <item name="android:navigationBarColor">@color/blbl_bg</item>
+        <item name="android:windowBackground">@color/blbl_bg</item>
+        <item name="android:textColorPrimary">@color/blbl_text</item>
+        <item name="android:textColorSecondary">@color/blbl_text_secondary</item>
+    </style>
+
+    <style name="Theme.Blbl.Base.PinkLight" parent="Theme.Blbl.Base">
+        <item name="colorPrimary">@color/blbl_surface_tv_pink</item>
+        <item name="colorPrimaryVariant">@color/blbl_surface_tv_pink</item>
+        <item name="colorOnPrimary">@color/blbl_text_tv_pink</item>
+
+        <item name="android:colorBackground">@color/blbl_bg_tv_pink</item>
+        <item name="colorBackground">@color/blbl_bg_tv_pink</item>
+        <item name="blblContentBackground">?attr/colorSurface</item>
+        <item name="colorSurface">@color/blbl_surface_tv_pink</item>
+        <item name="colorOnSurface">@color/blbl_text_tv_pink</item>
+        <item name="blblDialogSurface">@color/blbl_surface_tv_pink</item>
+        <item name="blblOnPageBackdrop">@color/blbl_text_tv_pink</item>
+        <item name="blblOnPageBackdropSecondary">@color/blbl_text_secondary_tv_pink</item>
+
+        <item name="android:statusBarColor">@color/blbl_bg_tv_pink</item>
+        <item name="android:navigationBarColor">@color/blbl_bg_tv_pink</item>
+        <item name="android:windowBackground">@color/blbl_bg_tv_pink</item>
+        <item name="android:textColorPrimary">@color/blbl_text_tv_pink</item>
+        <item name="android:textColorSecondary">@color/blbl_text_secondary_tv_pink</item>
+
+        <!-- Focus resources: use accent color for better contrast on light backgrounds. -->
+        <item name="blblFocusBgRound">@drawable/blbl_focus_bg_round_tv_pink</item>
+        <item name="blblFocusListSelectorRound">@drawable/blbl_focus_list_selector_round_tv_pink</item>
+        <item name="blblFocusStrokeColor">@color/blbl_focus_stroke_tv_pink</item>
+        <item name="blblFocusStrokeFocusOnlyColor">@color/blbl_focus_stroke_focus_only_tv_pink</item>
+    </style>
+
+    <style name="Theme.Blbl.Base.TvPinkIllustration" parent="Theme.Blbl.Base.PinkLight">
+        <item name="android:colorBackground">@color/blbl_bg_classic</item>
+        <item name="colorBackground">@color/blbl_bg_classic</item>
+        <item name="blblPageBackdrop">@drawable/bg_tv_pink_illustration_backdrop</item>
+        <item name="blblContentBackground">@color/blbl_content_bg_classic</item>
+        <item name="colorSurface">@color/blbl_surface_classic</item>
+        <item name="colorOnSurface">@color/blbl_text_classic</item>
+        <item name="blblDialogSurface">@color/blbl_dialog_surface_classic</item>
+        <item name="blblOnPageBackdrop">@color/blbl_on_page_backdrop_classic</item>
+        <item name="blblOnPageBackdropSecondary">@color/blbl_on_page_backdrop_secondary_classic</item>
+        <item name="android:statusBarColor">@color/blbl_bg_classic</item>
+        <item name="android:navigationBarColor">@color/blbl_bg_classic</item>
+        <item name="android:windowBackground">@drawable/bg_launcher_window</item>
+        <item name="android:textColorPrimary">@color/blbl_text_classic</item>
+        <item name="android:textColorSecondary">@color/blbl_text_secondary_classic</item>
+        <item name="blblAccent">@color/blbl_accent_classic</item>
+        <item name="blblAccentContainer">@color/blbl_accent_classic_container</item>
+        <item name="blblAccentWeak">@color/blbl_accent_classic_weak</item>
+        <item name="blblAccentPressed">@color/blbl_accent_classic_pressed</item>
+    </style>
+
+    <!-- Player is frozen for this iteration: keep existing blue focus/active states. -->
+    <style name="Theme.Blbl.Player.Fixed" parent="Theme.Blbl.Base.Dark">
+        <item name="blblAccent">@color/blbl_blue</item>
+        <item name="blblAccentContainer">@color/blbl_accent_blue_container</item>
+        <item name="blblAccentWeak">@color/blbl_accent_blue_weak</item>
+        <item name="blblAccentPressed">@color/blbl_accent_blue_pressed</item>
+
+        <item name="blblFocusBgRound">@drawable/blbl_focus_bg_round</item>
+        <item name="blblFocusListSelectorRound">@drawable/blbl_focus_list_selector_round</item>
+        <item name="blblFocusStrokeColor">@color/blbl_focus_stroke</item>
+        <item name="blblFocusStrokeFocusOnlyColor">@color/blbl_focus_stroke_focus_only</item>
+
+        <item name="materialAlertDialogTheme">@style/ThemeOverlay.Blbl.Player.MaterialAlertDialog</item>
+        <item name="alertDialogTheme">@style/ThemeOverlay.Blbl.Player.MaterialAlertDialog</item>
+        <item name="android:alertDialogTheme">@style/ThemeOverlay.Blbl.Player.MaterialAlertDialog</item>
+    </style>
+
+    <style name="Theme.Blbl.Launcher.Dark" parent="Theme.Blbl.Base.Dark">
+        <item name="android:windowBackground">@drawable/bg_launcher_window</item>
+    </style>
+
+    <style name="Theme.Blbl.Launcher.TvPink" parent="Theme.Blbl.Base.PinkLight">
+        <item name="blblAccent">@color/blbl_accent_tv_pink</item>
+        <item name="blblAccentContainer">@color/blbl_accent_tv_pink_container</item>
+        <item name="blblAccentWeak">@color/blbl_accent_tv_pink_weak</item>
+        <item name="blblAccentPressed">@color/blbl_accent_tv_pink_pressed</item>
+        <item name="android:windowBackground">@drawable/bg_launcher_window</item>
+    </style>
+
+    <style name="Theme.Blbl.Launcher.TvPinkIllustration" parent="Theme.Blbl.Base.TvPinkIllustration">
+        <item name="blblAccent">@color/blbl_accent_classic</item>
+        <item name="blblAccentContainer">@color/blbl_accent_classic_container</item>
+        <item name="blblAccentWeak">@color/blbl_accent_classic_weak</item>
+        <item name="blblAccentPressed">@color/blbl_accent_classic_pressed</item>
+        <item name="android:windowBackground">@drawable/bg_launcher_window</item>
+    </style>
+</resources>

@@ -1,0 +1,70 @@
+name: Bug 报告
+description: 描述你遇到的问题，帮助我们完善项目
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### ⚠️ 提交前请阅读
+        感谢你提交反馈！**本项目不处理【未登录状态】下的问题**（例如未登录时xx不显示、数据异常等）。请确保你的问题是在**已登录**状态下复现的。
+
+  - type: checkboxes
+    id: login-status
+    attributes:
+      label: 前置确认
+      options:
+        - label: 我确认当前处于**已登录**状态，且问题在登录后依然存在。
+          required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: 1. 当前版本
+      description: 请填写你正在使用的应用版本号。
+      placeholder: 例如：v0.1.17 或 最新源码编译
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 2. 遇到什么问题？
+      description: 请详细描述你遇到了什么问题，以及复现该问题的具体步骤。
+      placeholder: 1. 点击某处... 2. 跳转后... 3. 发生了崩溃/错误...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 3. 预期效果是什么？
+      description: 正常情况下，你期望看到什么结果？
+      placeholder: 期望点击后正常显示xx数据...
+    validations:
+      required: true
+
+  - type: input
+    id: device
+    attributes:
+      label: 4. 设备信息
+      description: 请提供出现问题的设备型号和系统版本。
+      placeholder: 例如：Pixel 7 / Android 14
+    validations:
+      required: true
+
+  - type: textarea
+    id: ui-issue
+    attributes:
+      label: 5. (可选) 样式/UI 显示问题补充
+      description: |
+        **如果是 UI 样式问题（如错位、遮挡等），请务必填写此项：**
+        1. 请提供屏幕参数（路径：设置 -> 关于设备 -> 屏幕）。
+        2. 将你的 **报错截图/异常截图** 拖拽或粘贴到下方文本框中。
+      placeholder: |
+        屏幕分辨率：
+        DPI：
+        
+        在此处粘贴图片...
+    validations:
+      required: false

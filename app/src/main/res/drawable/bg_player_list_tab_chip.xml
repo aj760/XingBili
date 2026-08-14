@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Keep the same black chip surface as the comment sort chips; focus only adds the ring. -->
+    <item android:state_focused="true" android:state_selected="true">
+        <shape android:shape="rectangle">
+            <solid android:color="#FF000000" />
+            <corners android:radius="12dp" />
+            <stroke
+                android:width="2dp"
+                android:color="?attr/blblAccent" />
+        </shape>
+    </item>
+
+    <!-- Focused: readable on bright video frames -->
+    <item android:state_focused="true">
+        <shape android:shape="rectangle">
+            <solid android:color="#FF000000" />
+            <corners android:radius="12dp" />
+            <stroke
+                android:width="2dp"
+                android:color="?attr/blblAccent" />
+        </shape>
+    </item>
+
+    <item android:state_pressed="true" android:state_selected="true">
+        <shape android:shape="rectangle">
+            <solid android:color="#FF000000" />
+            <corners android:radius="12dp" />
+        </shape>
+    </item>
+
+    <item android:state_pressed="true">
+        <shape android:shape="rectangle">
+            <solid android:color="#FF000000" />
+            <corners android:radius="12dp" />
+        </shape>
+    </item>
+
+    <item android:state_selected="true">
+        <shape android:shape="rectangle">
+            <solid android:color="#FF000000" />
+            <corners android:radius="12dp" />
+        </shape>
+    </item>
+
+    <!-- Default: per-tab background (no shared container background) -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#FF000000" />
+            <corners android:radius="12dp" />
+        </shape>
+    </item>
+</selector>

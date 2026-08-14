@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="ShapeAppearanceOverlay_Blbl_Circular">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">50%</item>
+    </style>
+
+    <style name="ShapeAppearanceOverlay_Blbl_Rounded">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">12dp</item>
+    </style>
+
+    <style name="ThemeOverlay.Blbl.Accent.Violet" parent="ThemeOverlay.MaterialComponents">
+        <item name="blblAccent">@color/blbl_purple</item>
+        <item name="blblAccentContainer">@color/blbl_accent_violet_container</item>
+        <item name="blblAccentWeak">@color/blbl_accent_violet_weak</item>
+        <item name="blblAccentPressed">@color/blbl_accent_violet_pressed</item>
+    </style>
+
+    <style name="ThemeOverlay.Blbl.Accent.TvPink" parent="ThemeOverlay.MaterialComponents">
+        <item name="blblAccent">@color/blbl_accent_tv_pink</item>
+        <item name="blblAccentContainer">@color/blbl_accent_tv_pink_container</item>
+        <item name="blblAccentWeak">@color/blbl_accent_tv_pink_weak</item>
+        <item name="blblAccentPressed">@color/blbl_accent_tv_pink_pressed</item>
+    </style>
+
+    <style name="ThemeOverlay.Blbl.Accent.Classic" parent="ThemeOverlay.MaterialComponents">
+        <item name="blblAccent">@color/blbl_accent_classic</item>
+        <item name="blblAccentContainer">@color/blbl_accent_classic_container</item>
+        <item name="blblAccentWeak">@color/blbl_accent_classic_weak</item>
+        <item name="blblAccentPressed">@color/blbl_accent_classic_pressed</item>
+    </style>
+
+    <style name="ThemeOverlay.Blbl.TransparentDialog" parent="ThemeOverlay.MaterialComponents.Dialog">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">true</item>
+    </style>
+
+    <style name="ThemeOverlay.Blbl.MaterialAlertDialog" parent="ThemeOverlay.MaterialComponents.MaterialAlertDialog">
+        <item name="colorPrimary">?attr/blblAccent</item>
+        <item name="colorSurface">?attr/blblDialogSurface</item>
+        <item name="colorOnPrimary">?attr/colorOnSurface</item>
+        <item name="materialAlertDialogTitleTextStyle">@style/Widget.Blbl.MaterialAlertDialog.Title.Text</item>
+        <item name="materialAlertDialogBodyTextStyle">@style/Widget.Blbl.MaterialAlertDialog.Body.Text</item>
+        <!-- For single-choice dialogs (ListView in AlertDialog): inject via listViewStyle for reliability. -->
+        <item name="android:listViewStyle">@style/Widget.Blbl.Dialog.ListView</item>
+        <item name="android:dropDownListViewStyle">@style/Widget.Blbl.Dialog.ListView</item>
+    </style>
+
+    <style name="ThemeOverlay.Blbl.Player.MaterialAlertDialog" parent="ThemeOverlay.MaterialComponents.MaterialAlertDialog">
+        <item name="colorPrimary">@color/blbl_blue</item>
+        <item name="colorOnPrimary">@color/blbl_text</item>
+        <item name="materialAlertDialogTitleTextStyle">@style/Widget.Blbl.MaterialAlertDialog.Title.Text</item>
+        <item name="materialAlertDialogBodyTextStyle">@style/Widget.Blbl.MaterialAlertDialog.Body.Text</item>
+        <!-- Player is frozen: keep the old list selector/focus behavior. -->
+        <item name="android:listViewStyle">@style/Widget.Blbl.Dialog.ListView</item>
+        <item name="android:dropDownListViewStyle">@style/Widget.Blbl.Dialog.ListView</item>
+    </style>
+
+    <style name="Widget.Blbl.Dialog.ListView" parent="Widget.AppCompat.ListView">
+        <item name="android:listSelector">?attr/blblFocusListSelectorRound</item>
+        <item name="android:divider">@android:color/transparent</item>
+        <item name="android:dividerHeight">0dp</item>
+        <item name="android:cacheColorHint">@android:color/transparent</item>
+    </style>
+
+    <style name="Widget.Blbl.MaterialAlertDialog.Title.Text" parent="MaterialAlertDialog.MaterialComponents.Title.Text">
+        <item name="android:textColor">?attr/colorOnSurface</item>
+    </style>
+
+    <style name="Widget.Blbl.MaterialAlertDialog.Body.Text" parent="MaterialAlertDialog.MaterialComponents.Body.Text">
+        <item name="android:textColor">?android:attr/textColorSecondary</item>
+    </style>
+
+    <style name="TextAppearance.Blbl.Tab" parent="TextAppearance.MaterialComponents.Button">
+        <item name="android:textSize">21sp</item>
+    </style>
+
+    <style name="Widget.Blbl.TabLayout" parent="Widget.MaterialComponents.TabLayout">
+        <item name="tabTextAppearance">@style/TextAppearance.Blbl.Tab</item>
+        <item name="tabIndicator">@drawable/blbl_tab_indicator</item>
+        <item name="tabIndicatorColor">?attr/blblAccent</item>
+        <item name="tabIndicatorFullWidth">false</item>
+        <item name="tabBackground">?attr/blblFocusBgRound</item>
+        <item name="tabSelectedTextColor">?attr/blblOnPageBackdrop</item>
+        <item name="tabTextColor">?attr/blblOnPageBackdropSecondary</item>
+        <item name="tabPaddingTop">4dp</item>
+        <item name="tabPaddingBottom">2dp</item>
+    </style>
+
+    <!-- Player OSD sizing overlay: baseline values (scaled at runtime by userScale + autoScale). -->
+    <style name="ThemeOverlay.Blbl.PlayerOsd.Normal" parent="ThemeOverlay.MaterialComponents">
+        <item name="playerOsdButtonTargetSize">@dimen/player_osd_button_target_size</item>
+        <item name="playerOsdPadTransport">@dimen/player_osd_pad_transport</item>
+        <item name="playerOsdPadNormal">@dimen/player_osd_pad_normal</item>
+        <item name="playerOsdPadSmall">@dimen/player_osd_pad_small</item>
+        <item name="playerOsdGap">@dimen/player_osd_gap</item>
+    </style>
+</resources>

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="blbl_bg">#121212</color>
+    <color name="blbl_surface">#1E1E1E</color>
+    <color name="blbl_text">#EDEDED</color>
+    <color name="blbl_text_secondary">#B3B3B3</color>
+
+    <!-- Text/icon tint used on top of media covers with scrims/shadows (theme-independent). -->
+    <color name="blbl_text_on_media">#EDEDED</color>
+
+    <!-- Base palette: TV Pink preset (light). -->
+    <color name="blbl_bg_tv_pink">#FFF7FA</color>
+    <color name="blbl_surface_tv_pink">#FFFFFF</color>
+    <color name="blbl_text_tv_pink">#121212</color>
+    <color name="blbl_text_secondary_tv_pink">#5A5A5A</color>
+
+    <!-- Base palette: Classic illustration preset. -->
+    <color name="blbl_bg_classic">#5A1C43</color>
+    <color name="blbl_content_bg_classic">#00000000</color>
+    <color name="blbl_surface_classic">#22FFFFFF</color>
+    <color name="blbl_dialog_surface_classic">#5A2D49</color>
+    <color name="blbl_text_classic">#FFF5FA</color>
+    <color name="blbl_text_secondary_classic">#D9BAC9</color>
+    <color name="blbl_on_page_backdrop_classic">#FFF5FA</color>
+    <color name="blbl_on_page_backdrop_secondary_classic">#DFC4D2</color>
+
+    <!-- Focus highlight: white frame + subtle shadow/overlay. -->
+    <color name="blbl_focus_white">#FFFFFF</color>
+    <color name="blbl_focus_shadow">#66000000</color>
+    <color name="blbl_focus_fill">#4D333333</color>
+    <color name="blbl_focus_fill_pressed">#66333333</color>
+
+    <!-- Accent derived colors: keep alpha variants centralized. -->
+    <color name="blbl_accent_violet_container">#338A2BE2</color>
+    <color name="blbl_accent_violet_weak">#668A2BE2</color>
+    <color name="blbl_accent_violet_pressed">#808A2BE2</color>
+
+    <color name="blbl_accent_tv_pink_container">#33FB7299</color>
+    <color name="blbl_accent_tv_pink_weak">#66FB7299</color>
+    <color name="blbl_accent_tv_pink_pressed">#80FB7299</color>
+
+    <color name="blbl_accent_classic">#FF8AB3</color>
+    <color name="blbl_accent_classic_container">#45FF8AB3</color>
+    <color name="blbl_accent_classic_weak">#80FF8AB3</color>
+    <color name="blbl_accent_classic_pressed">#99FF8AB3</color>
+
+    <color name="blbl_accent_blue_container">#3300A1D6</color>
+    <color name="blbl_accent_blue_weak">#6600A1D6</color>
+    <color name="blbl_accent_blue_pressed">#8000A1D6</color>
+    <color name="player_button_tint">#FFFFFF</color>
+    <color name="blbl_purple">#8A2BE2</color>
+    <color name="blbl_blue">#00A1D6</color>
+    <color name="player_comment_thread_root_bg">#2600A1D6</color>
+    <color name="blbl_red">#FF4D4F</color>
+    <!-- Theme accent base (TV Pink preset). Keep it separate from business-label pink. -->
+    <color name="blbl_accent_tv_pink">#FB7299</color>
+    <color name="blbl_pink">#FB7299</color>
+    <color name="player_overlay_bg">#80000000</color>
+
+    <!-- Comment card text colors (card background is always black; text must always be light). -->
+    <color name="blbl_comment_card_text">#F2F2F2</color>
+    <color name="blbl_comment_card_text_secondary">#B0B0B0</color>
+
+    <!-- Focus hint bubble (D-Pad focus hint shown by PlayerActivity). -->
+    <color name="blbl_focus_hint_bg">#CC1A1A1F</color>
+    <color name="blbl_focus_hint_text">#FFFFFFFF</color>
+
+    <!-- "已看过" badge drawn on top-left of video cards. Matches FocusHint style for consistency. -->
+    <color name="blbl_watched_badge_bg">#CC1A1A1F</color>
+    <color name="blbl_watched_badge_text">#FFFFFFFF</color>
+</resources>

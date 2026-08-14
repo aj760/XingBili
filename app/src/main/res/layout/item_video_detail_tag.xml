@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.chip.Chip xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:clickable="true"
+    android:ellipsize="end"
+    android:focusable="true"
+    android:maxLines="1"
+    android:stateListAnimator="@animator/blbl_focus_scale"
+    android:textColor="?attr/colorOnSurface"
+    android:textSize="16sp"
+    app:checkedIconVisible="false"
+    app:chipBackgroundColor="?attr/colorSurface"
+    app:chipCornerRadius="14dp"
+    app:chipIconVisible="false"
+    app:chipStrokeColor="?attr/blblFocusStrokeColor"
+    app:chipStrokeWidth="2dp"
+    app:closeIconVisible="false"
+    app:ensureMinTouchTargetSize="false"
+    app:textEndPadding="12dp"
+    app:textStartPadding="12dp" />
+

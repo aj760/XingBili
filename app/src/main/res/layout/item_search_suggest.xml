@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/card"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="@dimen/search_suggest_margin_bottom"
+    android:clickable="true"
+    android:focusable="true"
+    android:nextFocusLeft="@id/recycler_keys"
+    android:stateListAnimator="@animator/blbl_focus_scale"
+    app:cardBackgroundColor="?attr/colorSurface"
+    app:cardCornerRadius="18dp"
+    app:cardElevation="0dp"
+    app:strokeColor="?attr/blblFocusStrokeColor"
+    app:strokeWidth="2dp">
+
+    <TextView
+        android:id="@+id/tv_keyword"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:paddingHorizontal="@dimen/search_suggest_padding_h"
+        android:paddingVertical="@dimen/search_suggest_padding_v"
+        android:text="suggest"
+        android:textColor="?attr/colorOnSurface"
+        android:textSize="@dimen/search_suggest_text_size" />
+</com.google.android.material.card.MaterialCardView>

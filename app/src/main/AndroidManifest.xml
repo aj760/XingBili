@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+    <uses-feature
+        android:name="android.software.leanback"
+        android:required="false" />
+
+    <uses-feature
+        android:name="android.hardware.touchscreen"
+        android:required="false" />
+
+    <application
+        android:name=".BlblApp"
+        android:allowBackup="true"
+        android:banner="@drawable/tv_banner"
+        android:icon="@mipmap/ic_launcher"
+        android:label="${appName}"
+        android:largeHeap="true"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:usesCleartextTraffic="true"
+        android:theme="@style/Theme.Blbl">
+
+        <activity
+            android:name=".feature.player.PlayerActivity"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:screenOrientation="sensorLandscape" />
+
+        <activity
+            android:name=".feature.live.LivePlayerActivity"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:screenOrientation="sensorLandscape" />
+
+	        <activity
+	            android:name=".feature.settings.SettingsActivity"
+	            android:screenOrientation="sensorLandscape" />
+	        <activity
+	            android:name=".feature.risk.GaiaVgateActivity"
+	            android:exported="false"
+	            android:screenOrientation="sensorLandscape" />
+	        <activity
+	            android:name=".feature.login.QrLoginActivity"
+	            android:screenOrientation="sensorLandscape" />
+	        <activity
+	            android:name=".feature.following.FollowingListActivity"
+	            android:screenOrientation="sensorLandscape" />
+        <activity
+            android:name=".feature.following.UpDetailActivity"
+            android:screenOrientation="sensorLandscape" />
+
+        <activity
+            android:name=".feature.video.VideoDetailActivity"
+            android:screenOrientation="sensorLandscape" />
+
+        <activity
+            android:name=".feature.video.RegionDetailActivity"
+            android:screenOrientation="sensorLandscape" />
+
+        <activity
+            android:name=".feature.tag.TagDetailActivity"
+            android:screenOrientation="sensorLandscape" />
+
+        <activity
+            android:name=".feature.my.BangumiDetailActivity"
+            android:screenOrientation="sensorLandscape" />
+
+        <activity
+            android:name=".ui.MainActivity"
+            android:banner="@drawable/tv_banner"
+            android:exported="true"
+            android:screenOrientation="sensorLandscape" />
+
+        <activity
+            android:name=".ui.SplashDarkActivity"
+            android:banner="@drawable/tv_banner"
+            android:screenOrientation="sensorLandscape"
+            android:theme="@style/Theme.Blbl.Launcher.Dark" />
+
+        <activity
+            android:name=".ui.SplashTvPinkActivity"
+            android:banner="@drawable/tv_banner"
+            android:screenOrientation="sensorLandscape"
+            android:theme="@style/Theme.Blbl.Launcher.TvPink" />
+
+        <activity
+            android:name=".ui.SplashTvPinkIllustrationActivity"
+            android:banner="@drawable/tv_banner"
+            android:screenOrientation="sensorLandscape"
+            android:theme="@style/Theme.Blbl.Launcher.TvPinkIllustration" />
+
+        <activity-alias
+            android:name=".ui.MainLauncherDarkAlias"
+            android:banner="@drawable/tv_banner"
+            android:enabled="true"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:label="${appName}"
+            android:roundIcon="@mipmap/ic_launcher_round"
+            android:targetActivity=".ui.SplashDarkActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <!-- Legacy themed aliases stay disabled by default, but keep their launcher filters so
+             devices with persisted alias state from older versions can still launch after upgrade. -->
+        <activity-alias
+            android:name=".ui.MainLauncherTvPinkAlias"
+            android:banner="@drawable/tv_banner"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:label="${appName}"
+            android:roundIcon="@mipmap/ic_launcher_round"
+            android:targetActivity=".ui.SplashTvPinkActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".ui.MainLauncherTvPinkIllustrationAlias"
+            android:banner="@drawable/tv_banner"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:label="${appName}"
+            android:roundIcon="@mipmap/ic_launcher_round"
+            android:targetActivity=".ui.SplashTvPinkIllustrationActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/test_update_file_paths" />
+        </provider>
+    </application>
+
+</manifest>

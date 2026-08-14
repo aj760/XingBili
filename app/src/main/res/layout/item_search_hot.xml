@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/card"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="@dimen/search_hot_margin_bottom"
+    android:clickable="true"
+    android:focusable="true"
+    android:nextFocusLeft="@id/recycler_suggest"
+    android:stateListAnimator="@animator/blbl_focus_scale"
+    app:cardBackgroundColor="?attr/colorSurface"
+    app:cardCornerRadius="18dp"
+    app:cardElevation="0dp"
+    app:strokeColor="?attr/blblFocusStrokeColor"
+    app:strokeWidth="2dp">
+
+    <LinearLayout
+        android:id="@+id/container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="@dimen/search_hot_padding_h"
+        android:paddingVertical="@dimen/search_hot_padding_v">
+
+        <ImageView
+            android:id="@+id/iv_icon"
+            android:layout_width="@dimen/search_hot_icon_size"
+            android:layout_height="@dimen/search_hot_icon_size"
+            android:layout_marginEnd="@dimen/search_hot_icon_margin_end"
+            android:contentDescription="@string/tab_search"
+            android:src="@drawable/ic_hot_fire"
+            app:tint="?android:attr/textColorSecondary" />
+
+        <TextView
+            android:id="@+id/tv_keyword"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="hot"
+            android:textColor="?attr/colorOnSurface"
+            android:textSize="@dimen/search_hot_text_size" />
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>
