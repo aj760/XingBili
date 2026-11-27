@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/click_view"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/cell_background"
+    android:clickable="true"
+    android:focusable="true"
+    android:paddingTop="@dimen/px20"
+    android:paddingBottom="@dimen/px15">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/coverStack"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/px15"
+        android:layout_marginTop="@dimen/px10"
+        android:layout_marginEnd="@dimen/px15"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <View
+            android:id="@+id/viewStackBack"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_marginStart="@dimen/px50"
+            android:layout_marginEnd="@dimen/px50"
+            android:background="@drawable/bg_favorite_folder_stack_back"
+            app:layout_constraintDimensionRatio="h,16:9"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <View
+            android:id="@+id/viewStackMiddle"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_marginStart="@dimen/px25"
+            android:layout_marginTop="@dimen/px12"
+            android:layout_marginEnd="@dimen/px25"
+            android:background="@drawable/bg_favorite_folder_stack_middle"
+            app:layout_constraintDimensionRatio="h,16:9"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <FrameLayout
+            android:id="@+id/cardCover"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_marginTop="@dimen/px24"
+            app:layout_constraintDimensionRatio="h,16:9"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <androidx.appcompat.widget.AppCompatImageView
+                android:id="@+id/imageCover"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                tools:src="@mipmap/ic_launcher" />
+
+        </FrameLayout>
+
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/tvCount"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="@dimen/px8"
+            android:layout_marginBottom="@dimen/px8"
+            android:background="@drawable/bg_favorite_folder_count_badge"
+            android:drawableStart="@drawable/ic_favorite_folder_count"
+            android:drawablePadding="@dimen/px6"
+            android:gravity="center"
+            android:maxLines="1"
+            android:minWidth="@dimen/px44"
+            android:paddingStart="@dimen/px6"
+            android:paddingTop="@dimen/px3"
+            android:paddingEnd="@dimen/px6"
+            android:paddingBottom="@dimen/px3"
+            android:textColor="#FFFFFF"
+            android:textSize="@dimen/px20"
+            app:layout_constraintBottom_toBottomOf="@+id/cardCover"
+            app:layout_constraintEnd_toEndOf="@+id/cardCover"
+            tools:text="2" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <androidx.appcompat.widget.AppCompatTextView
+        android:id="@+id/tvTitle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/px10"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textColor="?android:attr/textColorPrimary"
+        android:textSize="@dimen/px30"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="@+id/coverStack"
+        app:layout_constraintStart_toStartOf="@+id/coverStack"
+        app:layout_constraintTop_toBottomOf="@+id/coverStack"
+        tools:text="收藏夹标题" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 章节选择弹窗（对齐官方 TV 版样式）：左上「章节」标题 + 右上 ✕ 关闭，
+     主体为左缩略图右标题的单列列表，当前章粉色高亮。 -->
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/dialog_root"
+    android:background="@drawable/dialog_background"
+    android:clickable="true"
+    android:focusable="true"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+    <androidx.appcompat.widget.AppCompatTextView
+        android:textSize="@dimen/px36"
+        android:textStyle="bold"
+        android:textColor="@color/white"
+        android:id="@+id/top_title"
+        android:focusable="false"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/px25"
+        android:text="@string/chapter_list"
+        android:paddingStart="@dimen/px40"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"/>
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/button_close"
+        android:background="@drawable/cell_background"
+        android:padding="@dimen/px12"
+        android:focusable="true"
+        android:clickable="true"
+        android:layout_width="@dimen/px70"
+        android:layout_height="@dimen/px70"
+        android:layout_marginTop="@dimen/px15"
+        android:layout_marginEnd="@dimen/px25"
+        android:src="@drawable/ic_close"
+        android:contentDescription="@string/close"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"/>
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerView"
+        android:focusable="false"
+        android:paddingBottom="@dimen/px25"
+        android:clipToPadding="false"
+        android:descendantFocusability="afterDescendants"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginTop="@dimen/px15"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/top_title"/>
+</androidx.constraintlayout.widget.ConstraintLayout>

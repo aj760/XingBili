@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 过期/失败覆盖层 = TV 选择框：底色始终透明（二维码保持完整可见），
+     聚焦/按压时以主题色描边指示焦点，不做整块染色（大色块染色会盖住二维码且刺眼） -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android" android:exitFadeDuration="@android:integer/config_shortAnimTime">
+    <item android:state_pressed="true">
+        <shape>
+            <solid android:color="@android:color/transparent" />
+            <stroke android:width="@dimen/px4" android:color="?attr/colorPrimary" />
+            <corners android:radius="@dimen/px15" />
+        </shape>
+    </item>
+    <item android:state_focused="true">
+        <shape>
+            <solid android:color="@android:color/transparent" />
+            <stroke android:width="@dimen/px4" android:color="?attr/colorPrimary" />
+            <corners android:radius="@dimen/px15" />
+        </shape>
+    </item>
+    <item>
+        <shape>
+            <solid android:color="@android:color/transparent" />
+            <corners android:radius="@dimen/px15" />
+        </shape>
+    </item>
+</selector>

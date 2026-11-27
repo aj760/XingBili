@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Player: load/play errors -->
+    <string name="player_load_failed">Load failed</string>
+    <string name="player_error_all_routes_unavailable">All routes and codecs unavailable at this quality</string>
+    <string name="player_error_playback_failed_retry_later">Playback failed at this quality, try again later</string>
+    <string name="player_error_init_failed">Failed to initialize player</string>
+    <string name="player_error_related_missing_id">Recommendation missing video ID</string>
+    <string name="player_error_continuation_missing_id">Autoplay target missing video ID</string>
+    <string name="player_error_quality_audio_unplayable">Current quality/audio track combination unplayable</string>
+    <string name="player_error_cid_invalid">Invalid CID</string>
+    <string name="player_error_bvid_invalid">Invalid BVID</string>
+    <string name="player_error_play_url_request_failed">Failed to request play URL</string>
+    <string name="player_error_play_url_load_failed">Failed to load play URL</string>
+    <string name="player_error_bangumi_detail_failed">Failed to load anime details</string>
+    <string name="player_error_no_playable_episode">No playable episode found</string>
+    <string name="player_error_video_detail_failed">Failed to load video details</string>
+    <string name="player_error_no_playable_page">No playable part found</string>
+
+    <!-- Player: risk control / teen mode -->
+    <string name="player_risk_control_requesting_verify">Account under risk control, requesting CAPTCHA…</string>
+    <string name="player_risk_control_try_look_fallback">Account under risk control, downgraded to preview mode</string>
+    <string name="player_risk_control_hint">Account under risk control. Complete verification in Settings.</string>
+    <string name="player_minor_protection_blocked">Teen mode blocked this video</string>
+
+    <!-- Player: recommendations / autoplay / episodes -->
+    <string name="player_loading_recommendations">Loading recommendations...</string>
+    <string name="player_no_recommendation">No recommendations for this video</string>
+    <string name="player_repeat_mode_one">Repeat one</string>
+    <string name="player_repeat_mode_all">Play in order</string>
+    <string name="player_no_episodes_toast">No episodes available</string>
+    <string name="player_collection">Collection</string>
+    <string name="player_page_p_format">Part %1$d</string>
+    <string name="player_total_p_format">%1$d parts</string>
+
+    <!-- Player: info not loaded -->
+    <string name="player_video_info_not_loaded">Video info not loaded yet</string>
+    <string name="player_up_info_not_loaded">Uploader info not loaded yet</string>
+
+    <!-- Player: subtitles -->
+    <string name="player_subtitle_unknown">Unknown</string>
+    <string name="player_subtitle_unavailable">Unavailable</string>
+
+    <!-- Player: SponsorBlock segments -->
+    <string name="player_skip_segment_toast_format">Skipped: %1$s</string>
+    <string name="player_mute_segment_toast_format">Muted: %1$s</string>
+    <string name="player_sponsor_category_sponsor">Sponsor</string>
+    <string name="player_sponsor_category_intro">Intro</string>
+    <!-- Official intro/outro (pgc playurl clip_info_list) -->
+    <string name="official_clip_op">Intro (official)</string>
+    <string name="official_clip_ed">Outro (official)</string>
+    <string name="player_sponsor_category_outro">Outro</string>
+    <string name="player_sponsor_category_self_promo">Self promotion</string>
+    <string name="player_sponsor_category_interaction">Interaction reminder</string>
+    <string name="player_sponsor_category_preview">Recap</string>
+    <string name="player_sponsor_category_music_offtopic">Non-music section</string>
+    <string name="player_sponsor_category_poi_highlight">Highlight</string>
+    <string name="player_sponsor_category_filler">Filler</string>
+    <string name="player_sponsor_category_padding">Padding</string>
+    <string name="player_sponsor_category_exclusive_access">Exclusive access</string>
+    <string name="player_sponsor_error_connection">SponsorBlock connection failed, check your network</string>
+    <string name="player_sponsor_service_error_format">SponsorBlock service error (%1$d)</string>
+    <string name="player_sponsor_test_failed">SponsorBlock test failed</string>
+    <string name="player_sponsor_test_api_error_format">Test failed: API returned %1$d</string>
+    <string name="player_sponsor_test_empty_response">Test failed: empty response</string>
+    <string name="player_sponsor_test_pass_segments_format">Test passed: %1$d segments found</string>
+    <string name="player_sponsor_test_pass_no_data">Test passed: connection and parsing OK (no test data)</string>
+    <string name="player_sponsor_test_error_message_format">Test failed: %1$s</string>
+
+    <!-- Player: header info and view counts -->
+    <string name="player_view_count_play_format">%1$s views</string>
+
+    <!-- Player: debug overlay -->
+
+    <!-- Live -->
+    <string name="live_toast_refreshing">Refreshing</string>
+    <string name="live_streaming_duration_format">Live: %1$s</string>
+    <string name="live_error_no_stream_url">Couldn\'t get live stream URL</string>
+    <string name="live_error_load_failed">Failed to load live stream</string>
+    <string name="live_line_fallback_name_format">Line %1$d</string>
+    <string name="live_error_switch_quality_failed">Failed to switch quality</string>
+    <string name="live_refresh_success">Refreshed</string>
+    <string name="live_error_refresh_failed">Failed to refresh live stream</string>
+    <string name="live_error_retry_failed">Retry failed</string>
+    <string name="live_login">Sign in</string>
+
+    <!-- CCTV live -->
+    <string name="cctv_official_live_desc">Official CCTV live stream</string>
+    <string name="live_error_room_info_failed">Failed to get room info</string>
+    <string name="live_error_room_not_living">This room is not live</string>
+    <string name="live_error_ip_info_failed">Failed to get IP info</string>
+    <string name="live_error_heartbeat_key_failed">Failed to get heartbeat key</string>
+    <string name="live_error_room_user_state_failed">Failed to get room user state</string>
+    <string name="live_error_history_danmaku_failed">Failed to get danmaku history</string>
+    <string name="live_error_heartbeat_failed">Live heartbeat failed</string>
+    <string name="series_error_follow_status_failed">Failed to get follow status</string>
+    <string name="series_error_follow_failed">Failed to follow</string>
+    <string name="series_error_unfollow_failed">Failed to unfollow</string>
+    <string name="series_error_timeline_failed">Failed to load timeline</string>
+    <string name="series_error_recommend_failed">Failed to load recommendations</string>
+    <string name="player_hdr_unsupported_hint">Your TV or player may not support %1$s. Switch back to another quality if playback fails</string>
+    <string name="player_audio_track_silent_hint">Device cannot decode %1$s, current audio track kept</string>
+    <string name="player_quality_switching_hint">Switching to %1$s, please wait…</string>
+    <string name="player_quality_switched_hint">Switched to %1$s</string>
+
+    <!-- 同时观看人数 / Online watching count -->
+    <string name="online_watching_format">%1$s watching</string>
+
+    <!-- 视频评论 / Video comments -->
+    <string name="player_comment_title">Comments</string>
+    <string name="player_comment_title_with_count_format">Comments (%1$s)</string>
+    <string name="player_comment_sort_hot">Hot</string>
+    <string name="player_comment_sort_new">New</string>
+    <string name="player_comment_loading">Loading…</string>
+    <string name="player_comment_empty">No comments yet</string>
+    <string name="player_comment_load_failed">Failed to load comments</string>
+    <string name="player_comment_thread_empty">No replies yet</string>
+    <string name="player_comment_thread_title">Comment Details</string>
+    <string name="player_comment_thread_section">Related Replies</string>
+    <string name="player_comment_thread_section_format">Related replies (%1$s)</string>
+    <string name="player_comment_level_accessibility">User level %1$d</string>
+    <string name="player_comment_level_senior_accessibility">Hardcore member, level %1$d</string>
+    <string name="player_comment_note_tag">Note</string>
+    <string name="player_comment_up_liked">Liked by uploader</string>
+    <string name="player_comment_top_tag">Pinned</string>
+    <string name="player_comment_no_aid">Video info not loaded</string>
+    <string name="player_comment_expand">Expand</string>
+    <string name="player_comment_collapse">Collapse</string>
+    <string name="player_comment_view_all_replies_format">View all %1$s replies</string>
+    <string name="player_comment_view_all_replies_long_press_format">Long-press to view all %1$s replies</string>
+    <string name="player_comment_note_image_loading">Loading image…</string>
+</resources>

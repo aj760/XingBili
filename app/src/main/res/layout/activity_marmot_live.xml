@@ -1,0 +1,320 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/marmot_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/black"
+    android:clickable="true"
+    android:focusable="true">
+
+    <!-- WebView 容器：直播页面在此渲染（WebView 播放路径） -->
+    <FrameLayout
+        android:id="@+id/webview_wrapper"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/black" />
+
+    <!-- 原生直播播放器（issue#106 阶段二：vdn 直拉 H5e 解密流，不走 WebView）。
+         默认隐藏，原生路径启用时顶替 WebView；遮罩在其之上，掀盖逻辑复用。 -->
+    <androidx.media3.ui.PlayerView
+        android:id="@+id/native_player_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/black"
+        app:use_controller="false"
+        app:surface_type="texture_view"
+        android:visibility="gone" />
+
+    <!-- 常显时钟：「时间常驻显示」开启时右上角常驻（顶栏呼出时避让，样式与顶栏时钟一致） -->
+    <TextClock
+        android:id="@+id/always_clock"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end|top"
+        android:layout_marginTop="@dimen/px30"
+        android:layout_marginEnd="@dimen/px50"
+        android:shadowColor="@color/black"
+        android:shadowRadius="7"
+        android:textColor="@color/white"
+        android:textSize="@dimen/px50"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
+    <!-- 全黑遮罩：非 CCTV 整页劫持加载期间盖住官网网页，视频就绪后移除，避免网页 UI 闪现 -->
+    <View
+        android:id="@+id/video_cover"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/black"
+        android:clickable="false"
+        android:focusable="false"
+        android:visibility="gone" />
+
+    <!-- 全屏视频容器（部分直播页 onShowCustomView 用） -->
+    <FrameLayout
+        android:id="@+id/fullscreen_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/black"
+        android:visibility="gone" />
+
+    <!-- 加载进度动画：B 站同款 load_data.gif（initView 挂帧动画；裸 ProgressBar 在电视 ROM 动画缩放=0 下静止） -->
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/progress_bar"
+        android:contentDescription="@string/loading"
+        android:layout_width="@dimen/px100"
+        android:layout_height="@dimen/px100"
+        android:layout_gravity="center"
+        android:layout_marginTop="@dimen/px60"
+        android:visibility="gone" />
+
+    <!-- 加载状态文字（遮罩层上的加载进度提示） -->
+    <TextView
+        android:id="@+id/video_cover_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_marginTop="@dimen/px200"
+        android:background="@drawable/transparent_black_bg"
+        android:paddingStart="@dimen/px30"
+        android:paddingTop="@dimen/px15"
+        android:paddingEnd="@dimen/px30"
+        android:paddingBottom="@dimen/px15"
+        android:textColor="@android:color/white"
+        android:textSize="@dimen/px32"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
+    <!-- 当前频道名提示（切台时短暂显示） -->
+    <TextView
+        android:id="@+id/live_name"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:background="@drawable/transparent_black_bg"
+        android:paddingStart="@dimen/px35"
+        android:paddingTop="@dimen/px20"
+        android:paddingEnd="@dimen/px35"
+        android:paddingBottom="@dimen/px20"
+        android:textColor="@android:color/white"
+        android:textSize="@dimen/px35"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
+    <!-- 播放UI：顶栏（左上返回按钮 + 右上时钟），与普通视频播放器一致随呼出显隐；
+         容器全宽透明不消费空白触摸（命中判定按内部具体控件） -->
+    <FrameLayout
+        android:id="@+id/top_bar"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/px170"
+        android:layout_gravity="top"
+        android:background="@drawable/player_top_gradient"
+        android:visibility="gone">
+
+        <com.mytvb.feature.player.view.PlayerControlButton
+            android:id="@+id/button_back"
+            android:layout_width="@dimen/px80"
+            android:layout_height="@dimen/px80"
+            android:layout_gravity="start|top"
+            android:layout_marginStart="@dimen/px30"
+            android:layout_marginTop="@dimen/px30"
+            android:background="@drawable/cell_background"
+            android:clickable="true"
+            android:contentDescription="@string/back"
+            android:focusable="true"
+            android:nextFocusDown="@id/button_channel"
+            android:nextFocusRight="@id/button_channel"
+            android:padding="@dimen/px18"
+            android:src="@drawable/ic_back" />
+
+        <TextClock
+            android:id="@+id/text_clock"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end|top"
+            android:layout_marginTop="@dimen/px30"
+            android:layout_marginEnd="@dimen/px50"
+            android:shadowColor="@color/black"
+            android:shadowRadius="7"
+            android:textColor="@color/white"
+            android:textSize="@dimen/px50"
+            android:textStyle="bold" />
+    </FrameLayout>
+
+    <!-- 播放UI：底部控制栏（分组/频道名 + 频道/画质/刷新 图标文字按钮）。
+         背景用直播页专用渐变：上半段"透明→深黑"羽化，下半段恒定深底；
+         paddingTop 让内容整体落在恒定深底段（= 渐变中位），避免标题/按钮
+         与新闻白色大字幕融在一起。改 paddingTop 时需同步核对渐变中位比例 -->
+    <LinearLayout
+        android:id="@+id/controller"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="@drawable/live_bottom_gradient"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="@dimen/px45"
+        android:paddingTop="@dimen/px147"
+        android:paddingEnd="@dimen/px45"
+        android:paddingBottom="@dimen/px20"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/text_channel_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:shadowColor="@color/black"
+                android:shadowDx="1.5"
+                android:shadowDy="1.3"
+                android:shadowRadius="1.6"
+                android:singleLine="true"
+                android:textColor="@android:color/white"
+                android:textSize="@dimen/px36"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/text_channel_hint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/px5"
+                android:shadowColor="@color/black"
+                android:shadowDx="1.5"
+                android:shadowDy="1.3"
+                android:shadowRadius="1.6"
+                android:text="@string/marmot_player_hint"
+                android:textColor="#B3FFFFFF"
+                android:textSize="@dimen/px22" />
+        </LinearLayout>
+
+        <androidx.appcompat.widget.LinearLayoutCompat
+            android:id="@+id/button_channel"
+            android:layout_width="@dimen/px130"
+            android:layout_height="@dimen/px113"
+            android:layout_marginEnd="@dimen/px20"
+            android:background="@drawable/cell_background"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <androidx.appcompat.widget.AppCompatImageView
+                android:layout_width="@dimen/px48"
+                android:layout_height="@dimen/px48"
+                android:src="@drawable/ic_tv" />
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/px6"
+                android:text="@string/channel"
+                android:textColor="@android:color/white"
+                android:textSize="@dimen/px22" />
+        </androidx.appcompat.widget.LinearLayoutCompat>
+
+        <androidx.appcompat.widget.LinearLayoutCompat
+            android:id="@+id/button_quality"
+            android:layout_width="@dimen/px130"
+            android:layout_height="@dimen/px113"
+            android:layout_marginEnd="@dimen/px20"
+            android:background="@drawable/cell_background"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <androidx.appcompat.widget.AppCompatImageView
+                android:layout_width="@dimen/px48"
+                android:layout_height="@dimen/px48"
+                android:src="@drawable/ic_quality" />
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/px6"
+                android:text="@string/cctv_quality"
+                android:textColor="@android:color/white"
+                android:textSize="@dimen/px22" />
+        </androidx.appcompat.widget.LinearLayoutCompat>
+
+        <androidx.appcompat.widget.LinearLayoutCompat
+            android:id="@+id/button_refresh"
+            android:layout_width="@dimen/px130"
+            android:layout_height="@dimen/px113"
+            android:background="@drawable/cell_background"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <androidx.appcompat.widget.AppCompatImageView
+                android:layout_width="@dimen/px48"
+                android:layout_height="@dimen/px48"
+                android:src="@drawable/ic_refresh" />
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/px6"
+                android:text="@string/refresh"
+                android:textColor="@android:color/white"
+                android:textSize="@dimen/px22" />
+        </androidx.appcompat.widget.LinearLayoutCompat>
+
+    </LinearLayout>
+
+    <!-- 频道列表浮层（对标参考 menu_dual_column：左分组140dp + 右频道300dp + 空白关闭区） -->
+    <LinearLayout
+        android:id="@+id/menu_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#00000000"
+        android:clickable="true"
+        android:focusable="true"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <!-- 左侧：分组列表（央视/卫视/地方台...）FocusLockRecyclerView 防焦点溢出 -->
+        <com.mytvb.core.ui.focus.FocusLockRecyclerView
+            android:id="@+id/group_list"
+            android:layout_width="@dimen/px315"
+            android:layout_height="match_parent"
+            android:background="#CC000000"
+            android:clipToPadding="false"
+            android:descendantFocusability="afterDescendants"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:overScrollMode="never"
+            android:padding="@dimen/px18" />
+
+        <!-- 右侧：频道列表 -->
+        <com.mytvb.core.ui.focus.FocusLockRecyclerView
+            android:id="@+id/channel_list"
+            android:layout_width="@dimen/px675"
+            android:layout_height="match_parent"
+            android:background="#AA000000"
+            android:clipToPadding="false"
+            android:descendantFocusability="afterDescendants"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:overScrollMode="never"
+            android:padding="@dimen/px18" />
+
+        <!-- 右侧空白区：点击关闭菜单 -->
+        <FrameLayout
+            android:id="@+id/menu_blank_area"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:background="#00000000"
+            android:clickable="true" />
+    </LinearLayout>
+
+</FrameLayout>

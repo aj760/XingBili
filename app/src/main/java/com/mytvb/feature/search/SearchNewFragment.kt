@@ -1,0 +1,1053 @@
+package com.mytvb.feature.search
+
+import android.content.Context
+import android.text.Editable
+import android.text.TextWatcher
+
+import android.view.KeyEvent
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
+import android.widget.TextView
+
+import com.mytvb.core.ui.base.ChoiceDialog
+import androidx.core.os.bundleOf
+import androidx.core.view.isVisible
+import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import androidx.viewpager2.widget.ViewPager2
+import com.google.android.material.tabs.TabLayoutMediator
+import com.mytvb.R
+import com.mytvb.databinding.FragmentSearchNewBinding
+import com.mytvb.model.search.HotWordModel
+import com.mytvb.model.search.SearchCategoryItem
+import com.mytvb.model.search.SearchType
+import com.mytvb.model.search.SearchVideoOrder
+import com.mytvb.ui.activity.LivePlayerActivity
+import com.mytvb.core.common.content.ContentFilter
+import com.mytvb.core.ui.base.BaseFragment
+import com.mytvb.core.ui.base.OnBackPressedHandler
+import com.mytvb.ui.activity.MainActivity
+import com.mytvb.ui.fragment.main.MainTabFocusTarget
+import com.mytvb.feature.detail.UserSpaceFragment
+import com.mytvb.feature.series.SeriesDetailFragment
+import com.mytvb.feature.search.view.KeyboardView
+import com.mytvb.core.ui.focus.SpatialFocusNavigator
+import com.mytvb.core.ui.system.ViewUtils
+import com.mytvb.core.ui.tab.enableTouchNavigation
+import com.mytvb.core.navigation.VideoRouteNavigator
+import com.mytvb.core.common.log.AppLog
+import com.mytvb.core.common.log.PagePerfLogger
+import com.mytvb.core.ui.navigation.navigateBackFromUi
+import com.mytvb.core.ui.tab.focusNearestTabTo
+import com.mytvb.core.ui.tab.focusSelectedTab
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
+import org.koin.androidx.viewmodel.ext.android.viewModel
+import com.mytvb.core.ui.base.AppToast
+
+@OptIn(FlowPreview::class)
+class SearchNewFragment :
+    BaseFragment<FragmentSearchNewBinding>(),
+    MainTabFocusTarget,
+    KeyboardView.KeySelectListener,
+    OnBackPressedHandler {
+
+    private val viewModel: SearchViewModel by viewModel()
+    private lateinit var hotSearchAdapter: HotSearchAdapter
+    private lateinit var centerAdapter: SearchSuggestAdapter
+    private var resultPagerAdapter: SearchResultPagerAdapter? = null
+    private lateinit var historyStore: SearchHistoryStore
+    private lateinit var focusCoordinator: SearchFocusCoordinator
+    private var tabMediator: TabLayoutMediator? = null
+    private var recentSearches: List<String> = emptyList()
+    private var currentKeyword = ""
+    private var latestSuggests: List<HotWordModel> = emptyList()
+    private var pendingHistoryKeyword: String? = null
+    private var suppressTextWatcher = false
+    private var suggestDebounceJob: Job? = null
+    private val pageSize = 20
+    private var currentOrder = SearchVideoOrder.TotalRank
+    private var isResultPanelVisible = false
+    private var pendingResultFocus = false
+    private var pendingOpenKeyword: String? = null
+    private var lastAppliedCategories: List<SearchCategoryItem>? = null
+    private var searchOpenStartMs = 0L
+    private var searchResultStartMs = 0L
+    private val pageChangeCallback = object : ViewPager2.OnPageChangeCallback() {
+        override fun onPageSelected(position: Int) {
+            updateOrderButtonVisibility(position)
+            maybeLoadPage(position, forceRefresh = false)
+        }
+    }
+
+    companion object {
+        private const val TAG = "SearchFocus"
+        private const val ARG_KEYWORD = "keyword"
+        private const val SEARCH_PANEL_FOCUS_DELAY_MS = 48L
+
+        fun newInstance(): SearchNewFragment = SearchNewFragment()
+
+        fun newInstance(keyword: String): SearchNewFragment {
+            return SearchNewFragment().apply {
+                arguments = bundleOf(ARG_KEYWORD to keyword)
+            }
+        }
+    }
+
+    override fun getViewBinding(
+        inflater: LayoutInflater,
+        container: ViewGroup?
+    ): FragmentSearchNewBinding {
+        return FragmentSearchNewBinding.inflate(inflater, container, false)
+    }
+
+    override fun initView() {
+        searchOpenStartMs = PagePerfLogger.now()
+        PagePerfLogger.markNow("Search", "initView_start")
+        historyStore = SearchHistoryStore(requireContext())
+        focusCoordinator = SearchFocusCoordinator(
+            searchPanelRoots = {
+                listOf(
+                    binding.viewKeyboard,
+                    binding.recyclerViewCenter,
+                    binding.recyclerViewEnd
+                )
+            },
+            resultPanelRoot = { binding.viewSearchResult }
+        )
+        setupInput()
+        setupKeyboard()
+        setupKeywordColumns()
+        setupResultHeader()
+        setupOrderButton()
+        registerFocusTracking()
+        updateOrderText()
+        showSearchPanel()
+        binding.root.post {
+            if (isAdded && view != null) {
+                PagePerfLogger.mark("Search", "input_panel_ready", searchOpenStartMs)
+            }
+        }
+    }
+
+    override fun initData() {
+        loadRecentSearches()
+        viewModel.loadHotSearch()
+        viewModel.loadSearchDefault()
+        pendingOpenKeyword = arguments?.getString(ARG_KEYWORD)?.trim()?.takeIf { it.isNotEmpty() }
+        submitPendingOpenKeyword()
+    }
+
+    override fun initObserver() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.hotSearchWords.collectLatest { words ->
+                    hotSearchAdapter.setData(words)
+                }
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.suggestWords.collectLatest { suggests ->
+                    latestSuggests = suggests
+                    syncCenterColumn()
+                }
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.searchDefault.collectLatest { word ->
+                    // 输入框为空时把官方默认词亮成占位提示，拉动搜索也回退到它
+                    binding.editText.hint = word?.showName?.takeIf { it.isNotBlank() }
+                        ?: getString(R.string.search)
+                }
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.searchOverview.collectLatest { overview ->
+                    val keyword = pendingHistoryKeyword
+                    if (overview != null && !keyword.isNullOrBlank() && keyword == currentKeyword) {
+                        saveRecentSearch(keyword)
+                        pendingHistoryKeyword = null
+                    }
+                }
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.searchCategories.collectLatest { categories ->
+                    applySearchCategories(categories)
+                }
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.searchPageStates.collectLatest { states ->
+                    val adapter = resultPagerAdapter ?: return@collectLatest
+                    states.forEach { (type, state) ->
+                        adapter.submitState(type, state.items, state.loading, state.hasMore)
+                    }
+                    maybeResolvePendingResultFocus()
+                }
+            }
+        }
+    }
+
+    private fun setupInput() {
+        // 焦点即呼出系统输入法：真机盒子无 IME 时 showSoftInput 静默失败，行为退回自家屏上键盘，无损
+        binding.editText.showSoftInputOnFocus = false
+        binding.editText.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) {
+                showSystemInputMethod()
+            } else {
+                // 系统键盘是浮层，焦点移去自家键盘/列表时不收会一直盖在下半屏
+                hideSystemInputMethod()
+            }
+        }
+        binding.editText.setOnClickListener { showSystemInputMethod() }
+        // 触屏点输入框以外收输入法由 MainActivity.dispatchTouchEvent 统一处理
+        // （OnTouchListener 只能收到落到空白的触摸，点 RecyclerView 条目/按钮收不到）
+
+        binding.editText.setOnKeyListener { view, keyCode, event ->
+            if (event.action != KeyEvent.ACTION_DOWN) {
+                return@setOnKeyListener false
+            }
+            when (keyCode) {
+                KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+                    showSystemInputMethod()
+                    true
+                }
+                KeyEvent.KEYCODE_DPAD_LEFT -> mainActivity?.focusLeftFunctionArea(view) == true
+                KeyEvent.KEYCODE_DPAD_DOWN -> {
+                    if (isResultPanelVisible) {
+                        focusCurrentResultContent(view) || focusResultHeader(view, includeOrderButton = false)
+                    } else {
+                        focusCenterColumn(view) ||
+                            focusHotColumn(view) ||
+                            binding.viewKeyboard.requestPrimaryFocus()
+                    }
+                }
+                KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                    if (isResultPanelVisible) {
+                        focusResultHeader(view)
+                    } else if (!binding.editText.text?.toString().isNullOrBlank()) {
+                        // 输入中：按右进联想词列表
+                        focusCenterColumn(view) ||
+                            focusHotColumn(view) ||
+                            binding.viewKeyboard.requestPrimaryFocus()
+                    } else {
+                        // 空输入：按右直达第一条热搜（v2.1.14 反馈），中列为历史记录不抢右键
+                        focusHotColumn(view) ||
+                            focusCenterColumn(view) ||
+                            binding.viewKeyboard.requestPrimaryFocus()
+                    }
+                }
+                KeyEvent.KEYCODE_DPAD_UP -> true
+                else -> false
+            }
+        }
+
+        binding.editText.setOnEditorActionListener { _: TextView, actionId: Int, _: KeyEvent? ->
+            if (actionId == EditorInfo.IME_ACTION_SEARCH) {
+                performSearch(binding.editText.text?.toString().orEmpty())
+                true
+            } else {
+                false
+            }
+        }
+
+        binding.editText.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                if (suppressTextWatcher) {
+                    return
+                }
+                val text = s?.toString().orEmpty()
+                val requestSuggest = !isResultPanelVisible
+                suggestDebounceJob?.cancel()
+                suggestDebounceJob = viewLifecycleOwner.lifecycleScope.launch {
+                    delay(300)
+                    handleInputChanged(text = text, requestSuggest = requestSuggest)
+                }
+            }
+
+            override fun afterTextChanged(s: Editable?) = Unit
+        })
+    }
+
+    private fun setupKeyboard() {
+        binding.viewKeyboard.setKeySelectListener(this)
+        binding.viewKeyboard.setDispatchKeyDel(true)
+        // 按键懒构建，不在这里建的话首次进入键盘区域是空白，要等焦点移进去才画出来
+        binding.viewKeyboard.ensureBuilt()
+    }
+
+    private fun showSystemInputMethod() {
+        val editText = binding.editText
+        editText.requestFocus()
+        // 点击当帧焦点可能还没落到输入框，showSoftInput 会直接失败，等一帧再呼
+        editText.post {
+            if (!editText.isAttachedToWindow) return@post
+            val inputMethodManager = editText.context
+                .getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+            // flags=0 显式请求：SHOW_IMPLICIT 允许系统在用户曾手动收起等场景静默忽略
+            val accepted = inputMethodManager?.showSoftInput(editText, 0) ?: false
+            AppLog.d(TAG, "showSystemInputMethod: focused=${editText.isFocused} accepted=$accepted")
+        }
+    }
+
+    private fun hideSystemInputMethod() {
+        val inputMethodManager = binding.editText.context
+            .getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+        inputMethodManager?.hideSoftInputFromWindow(binding.editText.windowToken, 0)
+    }
+
+    private fun setupKeywordColumns() {
+        centerAdapter = SearchSuggestAdapter(
+            onItemClick = { keyword -> performSearch(keyword) },
+            onClearHistory = ::clearSearchHistory,
+            onLeftEdge = ::focusKeyboardFromSearchColumn,
+            onRightEdge = ::focusHotSearchColumn
+        )
+        hotSearchAdapter = HotSearchAdapter(
+            onItemClick = { keyword -> performSearch(keyword) },
+            onLeftEdge = ::focusLeftColumnFromHotSearch
+        )
+
+        binding.recyclerViewCenter.layoutManager = LinearLayoutManager(requireContext())
+        binding.recyclerViewCenter.adapter = centerAdapter
+
+        binding.recyclerViewEnd.layoutManager = LinearLayoutManager(requireContext())
+        binding.recyclerViewEnd.adapter = hotSearchAdapter
+    }
+
+    private fun ensureSearchResultSetup(): SearchResultPagerAdapter {
+        resultPagerAdapter?.let { return it }
+
+        val setupStartMs = PagePerfLogger.now()
+        PagePerfLogger.markNow("Search", "result_setup_start")
+        val adapter = SearchResultPagerAdapter(
+            onItemClick = ::onResultItemClick,
+            onLoadMore = ::onResultPageLoadMore,
+            onTopEdgeUp = ::focusResultHeader,
+            onCachedRelation = viewModel::cachedRelation,
+            onQueryRelation = { mid ->
+                viewModel.queryRelation(mid) { resultPagerAdapter?.updateRelation(mid) }
+            }
+        )
+        resultPagerAdapter = adapter
+        adapter.setPages(emptyList())
+        binding.viewPagerResult.adapter = adapter
+        binding.viewPagerResult.offscreenPageLimit = 2
+        binding.viewPagerResult.registerOnPageChangeCallback(pageChangeCallback)
+
+        tabMediator?.detach()
+        tabMediator = TabLayoutMediator(binding.tabSearchResult, binding.viewPagerResult) { tab, position ->
+            tab.text = adapter.getPageTitle(position)
+        }
+        tabMediator?.attach()
+        binding.tabSearchResult.enableTouchNavigation(
+            binding.viewPagerResult,
+            tabFocusable = true,
+            onNavigateDown = { focusCurrentResultContent() },
+            // tab 上方是结果搜索框；不传会走框架默认，焦点越层逃去主页侧栏
+            onNavigateUp = { focusResultHeader() },
+            // 首个 tab 左键：tab 栏已被扩展恒消费（不传回调=焦点原地不动），显式指到主边栏
+            onNavigateLeft = ::focusSidebarCurrentTabFromTab
+        )
+        PagePerfLogger.mark("Search", "result_setup_end", setupStartMs)
+        return adapter
+    }
+
+    private fun setupResultHeader() {
+        binding.layoutResultSearchBox.setOnClickListener { enterEditFromResult() }
+        binding.layoutResultSearchBox.setOnKeyListener { view, keyCode, event ->
+            if (event.action != KeyEvent.ACTION_DOWN) {
+                return@setOnKeyListener false
+            }
+            when (keyCode) {
+                KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+                    enterEditFromResult()
+                    true
+                }
+                // 不交给框架默认导航：FocusFinder 在 ViewPager+列表布局会跳过 tab 直奔列表深处
+                KeyEvent.KEYCODE_DPAD_DOWN ->
+                    focusSelectedResultTab() || focusCurrentResultContent(view)
+                else -> false
+            }
+        }
+        binding.buttonResultBack.apply {
+            val goBack = {
+                if (arguments?.containsKey(ARG_KEYWORD) == true) {
+                    navigateBackFromUi()
+                } else {
+                    showSearchPanel()
+                }
+            }
+            setOnClickListener { goBack() }
+            setOnKeyListener { view, keyCode, event ->
+                if (event.action != KeyEvent.ACTION_DOWN) {
+                    return@setOnKeyListener false
+                }
+                when (keyCode) {
+                    KeyEvent.KEYCODE_DPAD_LEFT -> mainActivity?.focusLeftFunctionArea(view) == true
+                    KeyEvent.KEYCODE_DPAD_RIGHT -> focusResultPrimaryActions(view) || focusCurrentResultContent(view)
+                    KeyEvent.KEYCODE_DPAD_DOWN -> focusSelectedResultTab() || focusCurrentResultContent(view)
+                    KeyEvent.KEYCODE_DPAD_UP -> true
+                    KeyEvent.KEYCODE_DPAD_CENTER,
+                    KeyEvent.KEYCODE_ENTER -> {
+                        goBack()
+                        true
+                    }
+                    else -> false
+                }
+            }
+        }
+    }
+
+    private fun setupOrderButton() {
+        binding.buttonOrder.setOnClickListener { showOrderDialog() }
+        binding.buttonOrder.setOnKeyListener { view, keyCode, event ->
+            if (event.action != KeyEvent.ACTION_DOWN) {
+                return@setOnKeyListener false
+            }
+            when (keyCode) {
+                KeyEvent.KEYCODE_DPAD_DOWN -> focusCurrentResultContent(view)
+                KeyEvent.KEYCODE_DPAD_LEFT ->
+                    binding.layoutResultSearchBox.requestFocus() ||
+                        binding.tabSearchResult.focusNearestTabTo(view)
+                else -> false
+            }
+        }
+    }
+
+    private fun showOrderDialog() {
+        val orders = SearchVideoOrder.values()
+        val labels = orders.map { getString(it.nameRes) }
+        ChoiceDialog.show(
+            context = requireContext(),
+            title = getString(R.string.video_order),
+            options = labels,
+            selectedIndex = orders.indexOf(currentOrder).coerceAtLeast(0)
+        ) { which ->
+            currentOrder = orders[which]
+            updateOrderText()
+            if (currentKeyword.isNotBlank()) {
+                if (currentOrder == SearchVideoOrder.TotalRank) {
+                    performSearch(currentKeyword)
+                } else {
+                    // 综合搜索接口不支持 order，只按新排序重拉视频 tab；其余 tab 与排序无关保持不动
+                    viewModel.loadSearchPage(
+                        SearchType.Video,
+                        currentKeyword,
+                        pageSize,
+                        currentOrder,
+                        forceRefresh = true
+                    )
+                }
+            }
+        }
+        activity?.let { ViewUtils.hideSystemBars(it) }
+    }
+
+    private fun updateOrderText() {
+        binding.textOrder.text = getString(currentOrder.nameRes)
+    }
+
+    private fun updateOrderButtonVisibility(position: Int = binding.viewPagerResult.currentItem) {
+        val adapter = resultPagerAdapter ?: run {
+            binding.buttonOrder.visibility = View.GONE
+            return
+        }
+        val isVideoTab = adapter.getPageType(position) == SearchType.Video
+        binding.buttonOrder.visibility = if (isVideoTab) View.VISIBLE else View.GONE
+        if (!isVideoTab && binding.buttonOrder.hasFocus()) {
+            binding.tabSearchResult.focusSelectedTab()
+        }
+    }
+
+    private fun performSearch(keyword: String) {
+        var normalized = keyword.trim()
+        if (normalized.isEmpty()) {
+            // 空输入直接搜索时回退到官方默认词（与输入框占位一致），仍无词才提示
+            normalized = viewModel.searchDefault.value?.name?.trim().orEmpty()
+            if (normalized.isEmpty()) {
+                AppToast.show(requireContext(), R.string.empty_keyword)
+                return
+            }
+        }
+
+        currentKeyword = normalized
+        lastAppliedCategories = null
+        searchResultStartMs = PagePerfLogger.now()
+        PagePerfLogger.markNow("Search", "perform_search", "keywordLen=${normalized.length}")
+        pendingHistoryKeyword = null
+        pendingResultFocus = true
+        updateEditText(normalized, triggerSuggest = false)
+        binding.textResultKeyword.text = normalized
+        val adapter = ensureSearchResultSetup()
+        showResultPanel()
+        PagePerfLogger.mark("Search", "result_panel_visible", searchResultStartMs)
+        adapter.clearResults()
+
+        if (ContentFilter.isSearchKeywordBlocked(requireContext(), normalized)) {
+            adapter.setPages(emptyList())
+            binding.tabSearchResult.isVisible = false
+            binding.viewPagerResult.isVisible = false
+            binding.textSearchEmpty.isVisible = true
+            return
+        }
+
+        pendingHistoryKeyword = normalized
+        viewModel.searchAll(normalized, currentOrder)
+    }
+
+    private fun onResultItemClick(entry: SearchResultEntry) {
+        val item = entry.item
+        when (entry.pageType) {
+            SearchType.Video -> {
+                if (item.bvid.isNotBlank() || item.aid > 0) {
+                    VideoRouteNavigator.openVideo(
+                        context = requireContext(),
+                        video = com.mytvb.model.video.VideoModel(
+                            aid = item.aid,
+                            bvid = item.bvid,
+                            title = item.title,
+                            pic = item.pic.ifBlank { item.cover },
+                            cover = item.cover,
+                            pubDate = item.pubDate
+                        )
+                    )
+                }
+            }
+
+            SearchType.Animation,
+            SearchType.FilmAndTv -> {
+                val seasonId = item.pgcSeasonId.takeIf { it > 0 } ?: item.mediaId
+                if (seasonId > 0) {
+                    openInHostContainer(SeriesDetailFragment.newInstance(seasonId))
+                }
+            }
+
+            SearchType.LiveRoom -> {
+                if (item.roomId > 0) {
+                    LivePlayerActivity.start(requireContext(), item.roomId)
+                }
+            }
+
+            SearchType.User -> {
+                val mid = item.mid.toLongOrNull() ?: 0L
+                if (mid > 0) {
+                    openInHostContainer(UserSpaceFragment.newInstance(mid))
+                }
+            }
+        }
+    }
+
+    private fun onResultPageLoadMore(type: SearchType) {
+        if (currentKeyword.isBlank()) {
+            return
+        }
+        viewModel.loadSearchPage(type, currentKeyword, pageSize, currentOrder, forceRefresh = false)
+    }
+
+    private fun showResultPanel() {
+        isResultPanelVisible = true
+        pendingResultFocus = true
+        binding.viewSearchResult.isVisible = true
+        binding.layoutSearchInput.isVisible = false
+        binding.viewKeyboard.isVisible = false
+        binding.recyclerViewCenter.isVisible = false
+        binding.recyclerViewEnd.isVisible = false
+        binding.textSearchEmpty.isVisible = false
+    }
+
+    private fun showSearchPanel() {
+        isResultPanelVisible = false
+        binding.viewSearchResult.isVisible = false
+        binding.layoutSearchInput.isVisible = true
+        binding.viewKeyboard.isVisible = true
+        binding.recyclerViewEnd.isVisible = true
+        binding.textSearchEmpty.isVisible = false
+        handleInputChanged(binding.editText.text?.toString().orEmpty(), requestSuggest = true)
+        syncCenterColumn()
+        binding.viewKeyboard.postDelayed({
+            if (isAdded && binding.viewKeyboard.isVisible) {
+                restoreSearchPanelFocus()
+            }
+        }, SEARCH_PANEL_FOCUS_DELAY_MS)
+    }
+
+    // 结果面板顶部搜索框选中（点击/OK）：收面板回编辑态，原词已带在输入框，焦点即弹系统输入法
+    private fun enterEditFromResult() {
+        showSearchPanel()
+        if (binding.editText.requestFocus()) {
+            binding.editText.setSelection(binding.editText.text?.length ?: 0)
+        }
+    }
+
+    private fun syncCenterColumn() {
+        if (isResultPanelVisible) {
+            return
+        }
+
+        val input = binding.editText.text?.toString().orEmpty().trim()
+        if (input.isNotEmpty() && latestSuggests.isNotEmpty()) {
+            centerAdapter.setData(latestSuggests)
+            binding.recyclerViewCenter.isVisible = true
+        } else {
+            val historyModels = buildList {
+                if (recentSearches.isNotEmpty()) {
+                    add(HotWordModel.createClearHistory())
+                }
+                recentSearches.mapIndexedTo(this) { index, keyword ->
+                    HotWordModel.createHistory(keyword, index)
+                }
+            }
+            centerAdapter.setData(historyModels)
+            binding.recyclerViewCenter.isVisible = historyModels.isNotEmpty()
+        }
+    }
+
+    override fun onInsertText(text: String) {
+        val current = binding.editText.text?.toString().orEmpty().trim()
+        var base = current
+        if (base == getString(R.string.search)) {
+            base = ""
+        }
+        val next = base + text
+        updateEditText(next, triggerSuggest = true)
+    }
+
+    override fun onDelete() {
+        val current = binding.editText.text?.toString().orEmpty().trim()
+        if (current.isEmpty()) {
+            return
+        }
+        val next = current.dropLast(1)
+        updateEditText(next, triggerSuggest = true)
+        if (next.isEmpty()) {
+            showSearchPanel()
+        }
+    }
+
+    override fun onClear() {
+        updateEditText("", triggerSuggest = false)
+        currentKeyword = ""
+        showSearchPanel()
+    }
+
+    override fun onSearch() {
+        performSearch(binding.editText.text?.toString().orEmpty())
+    }
+
+    fun openKeyword(keyword: String) {
+        pendingOpenKeyword = keyword.trim().takeIf { it.isNotEmpty() }
+        if (view != null) {
+            submitPendingOpenKeyword()
+        }
+    }
+
+    /**
+     * BACK 分层（对齐主页 内容→二级tab→侧栏）：
+     * 结果面板内容区 → 先聚焦顶部结果分类 tab；已在分类 tab 上 → 退回搜索面板；
+     * 搜索面板内（热搜/历史/键盘）→ 先回搜索输入框；已在输入框 → 回主边栏当前 tab；
+     * 焦点已在本页外 → false 交双击退出。
+     * 原方法无任何调用方（死代码），2.1.13 后接入 OnBackPressedHandler 生效。
+     */
+    override fun onBackPressed(): Boolean {
+        if (view == null) {
+            return false
+        }
+        if (!binding.root.hasFocus()) {
+            return false
+        }
+        if (isResultPanelVisible && arguments?.containsKey(ARG_KEYWORD) != true) {
+            if (!binding.tabSearchResult.hasFocus() && focusSelectedResultTab()) {
+                return true
+            }
+            showSearchPanel()
+            return true
+        }
+        if (!binding.editText.hasFocus() && binding.editText.requestFocus()) {
+            return true
+        }
+        return (activity as? MainActivity)?.focusSidebarCurrentTab() == true
+    }
+
+    private fun loadRecentSearches() {
+        recentSearches = historyStore.load()
+        syncCenterColumn()
+    }
+
+    private fun saveRecentSearch(keyword: String) {
+        recentSearches = historyStore.save(keyword, recentSearches)
+        syncCenterColumn()
+    }
+
+    private fun clearSearchHistory() {
+        historyStore.clear()
+        recentSearches = emptyList()
+        syncCenterColumn()
+    }
+
+    override fun onPause() {
+        if (isResultPanelVisible) {
+            val focused = binding.root.findFocus()
+            AppLog.d(TAG, "onPause: isResultPanelVisible=true focused=${focused?.javaClass?.simpleName} focusedId=${focused?.id}")
+            resultPagerAdapter?.captureFocusAnchors()
+        } else {
+            AppLog.d(TAG, "onPause: isResultPanelVisible=false, skip capture")
+        }
+        super.onPause()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (isResultPanelVisible) {
+            // 从用户空间等页面返回：关注状态缓存可能已过期，失效并重查
+            viewModel.clearRelationCache()
+            resultPagerAdapter?.refreshRelations()
+            AppLog.d(TAG, "onResume: isResultPanelVisible=true, posting restore")
+            binding.root.postDelayed({
+                if (!isAdded || view == null) {
+                    AppLog.d(TAG, "onResume.post: fragment not added, skip")
+                    return@postDelayed
+                }
+                if (!binding.viewSearchResult.isShown) {
+                    AppLog.d(TAG, "onResume.post: viewSearchResult not shown yet, retry")
+                    binding.root.postDelayed({
+                        if (!isAdded || view == null) return@postDelayed
+                        val focused = binding.root.findFocus()
+                        AppLog.d(TAG, "onResume.retry: focused=${focused?.javaClass?.simpleName} shown=${binding.viewSearchResult.isShown}")
+                        resultPagerAdapter?.restoreFocusAnchors()
+                    }, 120)
+                    return@postDelayed
+                }
+                val focused = binding.root.findFocus()
+                AppLog.d(TAG, "onResume.post: focused=${focused?.javaClass?.simpleName}, calling restoreFocusAnchors")
+                resultPagerAdapter?.restoreFocusAnchors()
+            }, 80)
+        } else {
+            AppLog.d(TAG, "onResume: isResultPanelVisible=false, skip restore")
+        }
+    }
+
+
+    override fun onDestroyView() {
+        focusCoordinator.unregister(view)
+        tabMediator?.detach()
+        tabMediator = null
+        if (resultPagerAdapter != null) {
+            binding.viewPagerResult.unregisterOnPageChangeCallback(pageChangeCallback)
+            binding.viewPagerResult.adapter = null
+            resultPagerAdapter = null
+        }
+        super.onDestroyView()
+    }
+
+    private fun applySearchCategories(categories: List<SearchCategoryItem>) {
+        if (currentKeyword.isBlank() && resultPagerAdapter == null) {
+            return
+        }
+        if (categories == lastAppliedCategories && resultPagerAdapter != null) {
+            return
+        }
+        lastAppliedCategories = categories
+        val adapter = ensureSearchResultSetup()
+        val pageStates = viewModel.searchPageStates.value
+        val initialItems = pageStates.mapValues { (_, state) -> state.items }
+        val initialLoading = pageStates.mapValues { (_, state) -> state.loading }
+        val initialHasMore = pageStates.mapValues { (_, state) -> state.hasMore }
+        adapter.setPages(categories, initialItems, initialLoading, initialHasMore)
+        tabMediator?.detach()
+        tabMediator = TabLayoutMediator(binding.tabSearchResult, binding.viewPagerResult) { tab, position ->
+            tab.text = adapter.getPageTitle(position)
+        }
+        tabMediator?.attach()
+        binding.tabSearchResult.enableTouchNavigation(
+            binding.viewPagerResult,
+            tabFocusable = true,
+            onNavigateDown = { focusCurrentResultContent() },
+            // tab 上方是结果搜索框；不传会走框架默认，焦点越层逃去主页侧栏
+            onNavigateUp = { focusResultHeader() },
+            // 首个 tab 左键：tab 栏已被扩展恒消费（不传回调=焦点原地不动），显式指到主边栏
+            onNavigateLeft = ::focusSidebarCurrentTabFromTab
+        )
+        viewModel.searchPageStates.value.forEach { (type, state) ->
+            adapter.submitState(type, state.items, state.loading, state.hasMore)
+        }
+        val hasCategories = categories.isNotEmpty()
+        binding.tabSearchResult.isVisible = hasCategories
+        binding.viewPagerResult.isVisible = hasCategories
+        val searchCompleted = viewModel.searchOverview.value != null
+        binding.textSearchEmpty.isVisible = !hasCategories && searchCompleted
+        PagePerfLogger.mark(
+            "Search",
+            "categories_applied",
+            searchResultStartMs,
+            "categories=${categories.size} completed=$searchCompleted"
+        )
+
+        if (hasCategories) {
+            binding.viewPagerResult.setCurrentItem(0, false)
+            updateOrderButtonVisibility(0)
+            val firstType = categories.first().type
+            val state = viewModel.searchPageStates.value[firstType]
+            if (state == null || state.items.isEmpty()) {
+                viewModel.loadSearchPage(firstType, currentKeyword, pageSize, currentOrder, forceRefresh = false)
+            }
+        } else {
+            binding.buttonOrder.visibility = View.GONE
+        }
+        maybeResolvePendingResultFocus()
+    }
+
+    private fun maybeLoadPage(position: Int, forceRefresh: Boolean) {
+        if (currentKeyword.isBlank()) {
+            return
+        }
+        val adapter = resultPagerAdapter ?: return
+        val type = adapter.getPageType(position) ?: return
+        val state = viewModel.searchPageStates.value[type]
+        if (forceRefresh || state == null || state.items.isEmpty()) {
+            viewModel.loadSearchPage(type, currentKeyword, pageSize, currentOrder, forceRefresh)
+        }
+    }
+
+    private fun openInHostContainer(fragment: Fragment) {
+        mainActivity?.openInHostContainer(fragment)
+    }
+
+    private fun submitPendingOpenKeyword() {
+        val keyword = pendingOpenKeyword ?: return
+        pendingOpenKeyword = null
+        performSearch(keyword)
+    }
+
+    private fun updateEditText(text: String, triggerSuggest: Boolean) {
+        suppressTextWatcher = true
+        binding.editText.setText(text)
+        binding.editText.setSelection(text.length)
+        suppressTextWatcher = false
+        handleInputChanged(text = text, requestSuggest = triggerSuggest && !isResultPanelVisible)
+    }
+
+    private fun handleInputChanged(text: String, requestSuggest: Boolean) {
+        val normalized = text.trim()
+        if (normalized.isEmpty()) {
+            latestSuggests = emptyList()
+            syncCenterColumn()
+            return
+        }
+
+        if (!requestSuggest) {
+            syncCenterColumn()
+            return
+        }
+
+        viewModel.searchSuggest(normalized)
+    }
+
+    private fun registerFocusTracking() {
+        focusCoordinator.register(binding.root)
+    }
+
+    private fun restoreSearchPanelFocus(anchorView: View? = null): Boolean {
+        // 进入搜索面板（侧栏按右 / 结果面板返回）统一先落搜索输入框；
+        // 原实现恢复"上次聚焦的热搜条目"，再次进入仍停在第三条热搜（v2.1.14 反馈）
+        if (binding.editText.isVisible && binding.editText.requestFocus()) {
+            return true
+        }
+        return focusCoordinator.restoreSearchPanelFocus(
+            anchorView = anchorView,
+            focusCenterColumn = ::focusCenterColumn,
+            focusHotColumn = ::focusHotColumn,
+            focusKeyboard = binding.viewKeyboard::requestPrimaryFocus
+        )
+    }
+
+    private fun maybeResolvePendingResultFocus() {
+        if (
+            focusCoordinator.resolvePendingResultFocus(
+                isResultPanelVisible = isResultPanelVisible,
+                pendingResultFocus = pendingResultFocus,
+                focusCurrentResultContent = ::focusCurrentResultContent,
+                focusResultHeader = ::focusResultHeader,
+                currentResultPageHasItems = ::currentResultPageHasItems
+            )
+        ) {
+            pendingResultFocus = false
+        }
+    }
+
+    private fun restoreResultPanelFocus(anchorView: View? = null): Boolean {
+        return focusCoordinator.restoreResultPanelFocus(
+            anchorView = anchorView,
+            focusCurrentResultContent = ::focusCurrentResultContent,
+            focusResultHeader = ::focusResultHeader
+        )
+    }
+
+    override fun focusEntryFromMainTab(): Boolean {
+        return focusEntryFromMainTab(anchorView = null, preferSpatialEntry = false)
+    }
+
+    override fun focusEntryFromMainTab(anchorView: View?, preferSpatialEntry: Boolean): Boolean {
+        return if (isResultPanelVisible) {
+            restoreResultPanelFocus(anchorView)
+        } else {
+            restoreSearchPanelFocus(anchorView)
+        }
+    }
+
+    private fun focusCurrentResultContent(anchorView: View? = view?.findFocus()): Boolean {
+        val adapter = resultPagerAdapter ?: return false
+        return adapter.focusPrimaryContent(
+            type = adapter.getPageType(binding.viewPagerResult.currentItem),
+            anchorView = anchorView
+        )
+    }
+
+    /** 首个 tab 上按 LEFT：回到主边栏当前激活按钮（搜索页=搜索按钮，与卡片左边缘兜底一致）。 */
+    private fun focusSidebarCurrentTabFromTab(): Boolean {
+        return mainActivity?.focusSidebarCurrentTab() == true
+    }
+
+    private fun focusResultHeader(
+        anchorView: View? = view?.findFocus(),
+        includeOrderButton: Boolean = true
+    ): Boolean {
+        val candidates = buildList {
+            binding.buttonResultBack.takeIf { it.isVisible && it.isFocusable }?.let {
+                add(it)
+            }
+            binding.layoutResultSearchBox.takeIf { it.isVisible && it.isFocusable }?.let {
+                add(it)
+            }
+            addAll(resultTabViews())
+            if (includeOrderButton && binding.buttonOrder.isVisible && binding.buttonOrder.isFocusable) {
+                add(binding.buttonOrder)
+            }
+        }
+        return SpatialFocusNavigator.requestBestCandidate(
+            anchorView = anchorView,
+            candidates = candidates,
+            direction = View.FOCUS_UP,
+            fallback = {
+                (binding.buttonResultBack.requestFocus()) ||
+                    focusOrderButton() ||
+                    binding.tabSearchResult.focusSelectedTab()
+            }
+        )
+    }
+
+    private fun focusResultPrimaryActions(anchorView: View? = view?.findFocus()): Boolean {
+        val candidates = buildList {
+            binding.layoutResultSearchBox.takeIf { it.isVisible && it.isFocusable }?.let {
+                add(it)
+            }
+            addAll(resultTabViews())
+            if (binding.buttonOrder.isVisible && binding.buttonOrder.isFocusable) {
+                add(binding.buttonOrder)
+            }
+        }
+        return SpatialFocusNavigator.requestBestCandidate(
+            anchorView = anchorView,
+            candidates = candidates,
+            direction = View.FOCUS_RIGHT,
+            fallback = {
+                focusOrderButton() || binding.tabSearchResult.focusSelectedTab()
+            }
+        )
+    }
+
+    private fun focusOrderButton(): Boolean {
+        return if (binding.buttonOrder.isVisible && binding.buttonOrder.isFocusable) {
+            binding.buttonOrder.requestFocus()
+        } else {
+            false
+        }
+    }
+
+    private fun focusSelectedResultTab(): Boolean {
+        return binding.tabSearchResult.isVisible && binding.tabSearchResult.focusSelectedTab()
+    }
+
+    private fun focusKeyboardFromSearchColumn(anchorView: View): Boolean {
+        return SpatialFocusNavigator.requestBestDescendant(
+            anchorView = anchorView,
+            root = binding.viewKeyboard,
+            direction = View.FOCUS_LEFT,
+            fallback = { binding.viewKeyboard.requestPrimaryFocus() }
+        )
+    }
+
+    private fun focusHotSearchColumn(anchorView: View): Boolean {
+        return focusHotColumn(anchorView)
+    }
+
+    private fun focusLeftColumnFromHotSearch(anchorView: View): Boolean {
+        return focusCenterColumn(anchorView) || focusKeyboardFromSearchColumn(anchorView)
+    }
+
+    private fun focusCenterColumn(anchorView: View?): Boolean {
+        if (!binding.recyclerViewCenter.isVisible) {
+            return false
+        }
+        return focusRecycler(binding.recyclerViewCenter, anchorView, View.FOCUS_LEFT)
+    }
+
+    private fun focusHotColumn(anchorView: View?): Boolean {
+        if (!binding.recyclerViewEnd.isVisible) {
+            return false
+        }
+        return focusRecycler(binding.recyclerViewEnd, anchorView, View.FOCUS_RIGHT)
+    }
+
+    private fun focusRecycler(
+        recyclerView: RecyclerView,
+        anchorView: View?,
+        direction: Int
+    ): Boolean {
+        return SpatialFocusNavigator.requestBestDescendant(
+            anchorView = anchorView,
+            root = recyclerView,
+            direction = direction,
+            fallback = {
+                recyclerView.findViewHolderForAdapterPosition(0)?.itemView?.requestFocus() == true ||
+                    recyclerView.getChildAt(0)?.requestFocus() == true
+            }
+        )
+    }
+
+    private fun resultTabViews(): List<View> {
+        val tabStrip = binding.tabSearchResult.getChildAt(0) as? ViewGroup ?: return emptyList()
+        return (0 until tabStrip.childCount)
+            .mapNotNull(tabStrip::getChildAt)
+            .filter { it.visibility == View.VISIBLE && it.isFocusable }
+    }
+
+    private fun currentResultPageHasItems(): Boolean {
+        val adapter = resultPagerAdapter ?: return false
+        val type = adapter.getPageType(binding.viewPagerResult.currentItem) ?: return false
+        return viewModel.searchPageStates.value[type]?.items?.isNotEmpty() == true
+    }
+}

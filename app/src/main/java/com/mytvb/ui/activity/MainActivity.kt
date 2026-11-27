@@ -1,0 +1,1413 @@
+package com.mytvb.ui.activity
+
+import android.content.Context
+import android.content.Intent
+import android.os.Bundle
+import android.os.SystemClock
+import android.view.Choreographer
+import android.view.View
+import android.view.ViewTreeObserver
+import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.tabs.TabLayout
+import androidx.annotation.OptIn
+import androidx.activity.OnBackPressedCallback
+import androidx.activity.viewModels
+import androidx.fragment.app.Fragment
+import android.view.MotionEvent
+import android.view.inputmethod.InputMethodManager
+import android.widget.EditText
+import androidx.fragment.app.FragmentManager
+import androidx.fragment.app.FragmentTransaction
+import androidx.fragment.app.commit
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.media3.common.util.UnstableApi
+import com.mytvb.R
+import com.mytvb.MyBLBLApplication
+import com.mytvb.databinding.ActivityMainBinding
+import com.mytvb.event.AppEventHub
+import com.mytvb.network.NetworkManager
+import com.mytvb.network.session.NetworkSessionGateway
+import com.mytvb.repository.UserRepository
+import com.mytvb.core.ui.base.AppToast
+import com.mytvb.core.ui.base.BaseActivity
+import com.mytvb.core.ui.base.OnBackPressedHandler
+import com.mytvb.core.ui.base.UiScale
+import com.mytvb.model.user.UserDetailInfoModel
+import com.mytvb.model.video.VideoModel
+import com.mytvb.feature.cast.NvaCastController
+import com.mytvb.feature.category.CategoryFragment
+import com.mytvb.feature.cctv.vod.CctvVodFragment
+import com.mytvb.feature.detail.VideoDetailFragment
+import com.mytvb.feature.dynamic.DynamicFragment
+import com.mytvb.feature.home.HomeFragment
+import com.mytvb.feature.home.HomeFragmentStateAdapter
+import com.mytvb.feature.live.LiveFragment
+import com.mytvb.feature.me.MeFragment
+import com.mytvb.ui.fragment.main.MainNavigationViewModel
+import com.mytvb.ui.fragment.main.MainTabFocusTarget
+import com.mytvb.feature.search.SearchNewFragment
+import com.mytvb.feature.settings.SettingsFragment
+import com.mytvb.feature.settings.SignInFragment
+import com.mytvb.ui.dialog.UsageTipDialog
+import com.mytvb.ui.dialog.UserInfoDialog
+import com.mytvb.feature.player.PlayerInstancePool
+import com.mytvb.feature.player.VideoPlayerFragment
+import com.mytvb.core.common.log.AppLog
+import com.mytvb.core.common.update.ApkUpdater
+import com.mytvb.ui.dialog.UpdateFlowDialog
+import com.mytvb.core.common.net.NetworkRecoveryMonitor
+import com.mytvb.core.ui.navigation.TabBarView
+import com.mytvb.core.common.content.ContentFilter
+import com.mytvb.core.startup.AppStartupScheduler
+import com.mytvb.core.ui.image.ImageLoader
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.koin.android.ext.android.inject
+import java.lang.ref.WeakReference
+
+@OptIn(UnstableApi::class)
+class MainActivity : BaseActivity<ActivityMainBinding>(), TabBarView.OnTabClickListener {
+
+    private data class FocusRestoreAnchor(
+        val viewRef: WeakReference<View>
+    )
+
+    /** 最近一次触摸按下时刻（uptimeMillis），触摸模式盲恢复判定用（见 recoverFocus…）。 */
+    private var lastTouchDownAt = 0L
+
+    /**
+     * 触屏点输入框以外区域收起系统输入法，且这次点击不派发（用户约定：
+     * 键盘弹出时第一次点击专门用于收键盘，不触发任何功能——点热搜不搜索、
+     * 点按钮不执行；键盘收着时点击一切照旧）。必须放在 dispatchTouchEvent：
+     * 挂 OnTouchListener 只能收到落到空白的触摸。点输入框本身不收（继续编辑）。
+     * hide 返回 true=键盘正显示且已收起，此时消费事件；false=键盘未显示，正常派发。
+     */
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        if (ev.action == MotionEvent.ACTION_DOWN) {
+            lastTouchDownAt = SystemClock.uptimeMillis()
+            val focused = currentFocus
+            if (focused is EditText && isImeVisible()) {
+                val location = IntArray(2)
+                focused.getLocationOnScreen(location)
+                val within = ev.rawX >= location[0] && ev.rawX <= location[0] + focused.width &&
+                    ev.rawY >= location[1] && ev.rawY <= location[1] + focused.height
+                if (!within) {
+                    val imm = getSystemService(INPUT_METHOD_SERVICE) as? InputMethodManager
+                    imm?.hideSoftInputFromWindow(focused.windowToken, 0)
+                    // hideSoftInputFromWindow 在键盘未显示时也返回 true，不能当显示依据
+                    return true
+                }
+            }
+        }
+        return super.dispatchTouchEvent(ev)
+    }
+
+    private fun isImeVisible(): Boolean {
+        val frame = android.graphics.Rect()
+        window.decorView.getWindowVisibleDisplayFrame(frame)
+        val height = resources.displayMetrics.heightPixels
+        return height - frame.height() > height * 0.15
+    }
+
+    companion object {
+        private const val SETTINGS_OVERLAY_TAG = "settings"
+        private const val SETTINGS_OVERLAY_EXIT_ANIM_MS = 275L
+        private const val CCTV_TAB_INDEX = 4
+        private const val CCTV_VOD_TAB_INDEX = 5
+        private const val HONGGUO_TAB_INDEX = 6
+        private const val ME_TAB_INDEX = 7
+        private const val SEARCH_TAB_INDEX = 8
+        private const val HOME_TAB_INDEX = 0
+        private const val STARTUP_TAG = "AppStartup"
+        private const val TEEN_REST_DIAG_TAG = "TeenRestDiag"
+        // 触摸后多久内的「无焦点→侧栏」焦点变化算触摸模式盲恢复（见 recoverFocus…）
+        private const val TOUCH_BLIND_RECOVERY_WINDOW_MS = 4000L
+        // 播放器等独立 Activity 长按菜单「视频详情」直达：宿主容器不可达时带参拉起主页
+        private const val EXTRA_DETAIL_AID = "extra_detail_aid"
+        private const val EXTRA_DETAIL_BVID = "extra_detail_bvid"
+
+        /**
+         * 从非 MainActivity 宿主（如播放页长按菜单）直达视频详情页：
+         * CLEAR_TOP+singleTop 复用栈底主页并替换掉其上的播放器，
+         * 主页 resume 后消费参数打开详情。无 aid 且无 bvid 时返回 false，
+         * 由调用方走原有兜底。
+         */
+        fun startWithVideoDetail(context: Context, video: VideoModel): Boolean {
+            if (video.aid <= 0L && video.bvid.isBlank()) return false
+            context.startActivity(
+                Intent(context, MainActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                    .putExtra(EXTRA_DETAIL_AID, video.aid)
+                    .putExtra(EXTRA_DETAIL_BVID, video.bvid)
+            )
+            return true
+        }
+    }
+
+    // 外部 Activity 直达详情的待消费参数：onNewIntent/冷启动 intent 写入，resume 后消费
+    private var pendingDetailAid: Long = 0L
+    private var pendingDetailBvid: String? = null
+
+    /** 青少年模式：休息遮罩倒计时 Handler，每秒刷新剩余时间。 */
+    private val teenRestHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val teenRestTicker = object : Runnable {
+        override fun run() {
+            updateTeenRestCountdown()
+            // 还有剩余时间才继续，否则 updateTeenRestCountdown 内部会撤掉遮罩并停止
+            if (binding.teenRestOverlay.visibility == View.VISIBLE) {
+                teenRestHandler.postDelayed(this, 1000L)
+            }
+        }
+    }
+
+    // tab 顺序固定（与 fragmentFactories 一一对应）：
+    // 0 推荐 / 1 分类 / 2 动态 / 3 直播 / 4 CCTV直播 / 5 CCTV影视 / 6 红果短剧 / 7 我的 / 8 搜索。
+    // 用 lazy factory 让非首屏 tab 真正点中时再构造，省去 1.1s 的 onCreate 大段时间。
+    // tab4 CCTV直播：onTabSelected 直进 MarmotLiveActivity，不持有 Fragment（占位仅保持下标对齐）。
+    private val fragmentFactories: List<() -> Fragment> = listOf(
+        { HomeFragment.newInstance() },
+        { CategoryFragment.newInstance() },
+        { DynamicFragment.newInstance() },
+        { LiveFragment.newInstance() },
+        { error("tab4 CCTV 直播不持有 Fragment") },
+        { CctvVodFragment.newInstance() },
+        { com.mytvb.feature.hongguo.HongguoFragment.newInstance() },
+        { MeFragment.newInstance() },
+        { SearchNewFragment.newInstance() }
+    )
+    private val fragments: MutableList<Fragment?> = MutableList(fragmentFactories.size) { null }
+    private val appEventHub: AppEventHub by inject()
+    private val mainNavigationViewModel: MainNavigationViewModel by viewModels()
+    private val sessionGateway: NetworkSessionGateway by inject()
+    private val userRepository: UserRepository by inject()
+    private val personalFeedPrewarmer: com.mytvb.repository.PersonalFeedPrewarmer by inject()
+    private var currentFragmentIndex = -1
+    private var exitTime: Long = 0
+    private val exitInterval = 2000L
+
+    /** 进入 CCTV 直播等独立 Activity 前置位；窗口焦点回来后检查焦点是否丢失并兜底恢复。 */
+    private var pendingFocusRestoreAfterExternalReturn = false
+    private val focusRestoreAnchors = ArrayDeque<FocusRestoreAnchor>()
+    private var lastBackStackEntryCount = 0
+    private var pendingFocusRestoreDelayMs = 0L
+    private var startupTasksScheduled = false
+    private var startupShellRevealed = false
+    private var startupInitialContentAttached = false
+    private var homeContentReadyLogged = false
+    private var startupAvatarRefreshScheduled = false
+    private var postHomeAvatarRefreshScheduled = false
+    private var avatarRefreshJob: Job? = null
+    private val activityCreateStartMs = SystemClock.elapsedRealtime()
+    private var lastKnownLoggedIn = false
+    private var pendingInitialTabIndex = -1
+    private var restoredFromSavedState = false
+    private var restoredTabIndex = -1
+
+    override fun getViewBinding(): ActivityMainBinding {
+        val t0 = SystemClock.elapsedRealtime()
+        AppLog.i(STARTUP_TAG, "STARTUP activity_main inflate start")
+        val binding = ActivityMainBinding.inflate(layoutInflater)
+        AppLog.i(STARTUP_TAG, "STARTUP getViewBinding elapsed=${SystemClock.elapsedRealtime() - t0}ms")
+        return binding
+    }
+
+    override fun deferInitialFullscreenMode(): Boolean = true
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        val createStartMs = SystemClock.elapsedRealtime()
+        AppLog.i(STARTUP_TAG, "STARTUP T1b MainActivity.onCreate start")
+        if (savedInstanceState == null && shouldFinishDuplicateLauncherLaunch()) {
+            super.onCreate(savedInstanceState)
+            finish()
+            return
+        }
+        (application as? MyBLBLApplication)?.ensureSessionRuntimeReady("MainActivity.onCreate/sessionState")
+        restoredFromSavedState = savedInstanceState != null
+        // 冷启动直达详情（主页被系统回收后经 CLEAR_TOP 重建的场景）；旋转重建不带旧参数
+        if (savedInstanceState == null) {
+            pendingDetailAid = intent.getLongExtra(EXTRA_DETAIL_AID, 0L)
+            pendingDetailBvid = intent.getStringExtra(EXTRA_DETAIL_BVID)
+        }
+        val t0 = SystemClock.elapsedRealtime()
+        super.onCreate(savedInstanceState)
+        AppLog.i(STARTUP_TAG, "STARTUP super.onCreate elapsed=${SystemClock.elapsedRealtime() - t0}ms")
+        lastKnownLoggedIn = sessionGateway.isLoggedIn()
+        restoredTabIndex = mainNavigationViewModel.getSavedTabIndex()
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                handleBackPressed()
+            }
+        })
+        supportFragmentManager.addOnBackStackChangedListener {
+            val currentCount = supportFragmentManager.backStackEntryCount
+            if (currentCount < lastBackStackEntryCount) {
+                restoreFocusAfterOverlayPop()
+            }
+            lastBackStackEntryCount = currentCount
+            updateNavigationVisibility()
+        }
+        lastBackStackEntryCount = supportFragmentManager.backStackEntryCount
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                mainNavigationViewModel.events.collect { event ->
+                    if (event == MainNavigationViewModel.Event.HomeContentReady) {
+                        onHomeContentReady()
+                    }
+                }
+            }
+        }
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                coroutineScope {
+                    launch {
+                        // 订阅会话单一状态源：登录态变化（含停止期间错过的跳变）自动刷新头像，
+                        // 并在登录/登出跳变时补广播给各页面
+                        refreshAvatar(allowNetworkFetch = false)
+                        sessionGateway.sessionState.collect { state ->
+                            val loggedIn = state.isLoggedIn
+                            if (loggedIn != lastKnownLoggedIn) {
+                                lastKnownLoggedIn = loggedIn
+                                appEventHub.dispatch(AppEventHub.Event.UserSessionChanged)
+                            }
+                            refreshAvatar(allowNetworkFetch = false)
+                        }
+                    }
+                    launch {
+                        appEventHub.events.collect { event ->
+                            if (event == AppEventHub.Event.UserSessionChanged) {
+                                lastKnownLoggedIn = sessionGateway.isLoggedIn()
+                                refreshAvatar()
+                            }
+                            if (event is AppEventHub.Event.VideoBlockedByMinorProtection) {
+                                dispatchVideoBlockedEventToCurrentFragment(event)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        // 投屏服务在"退出应用"时会被显式关闭（onDestroy），进程仍存活时再次进入
+        // 主界面必须重新拉起，否则第二次打开 App 后手机上搜不到设备。install 内部幂等。
+        runCatching { NvaCastController.install(this) }
+            .onFailure { AppLog.w(STARTUP_TAG, "NVA cast restart failed", it) }
+        AppLog.i(STARTUP_TAG, "STARTUP T1c MainActivity.onCreate end elapsed=${SystemClock.elapsedRealtime() - createStartMs}ms totalFromActivityMs=${SystemClock.elapsedRealtime() - activityCreateStartMs}ms")
+    }
+
+    override fun onDestroy() {
+        // 双击返回键退出应用时只会 finish Activity，进程仍留在缓存态。
+        // 投屏服务（SSDP 组播 + 9958 长连接）是纯线程常驻，不会随 Activity 结束而停止，
+        // 于是"退出"之后手机还能继续搜到并投屏。这里在真正的退出路径上显式关闭。
+        if (isFinishing && !isChangingConfigurations) {
+            runCatching { NvaCastController.get()?.shutdown() }
+                .onFailure { AppLog.w(STARTUP_TAG, "NVA cast shutdown failed", it) }
+        }
+        super.onDestroy()
+    }
+
+    override fun initView() {
+        val t0 = SystemClock.elapsedRealtime()
+        initFragments()
+        binding.myTabView.setOnTabClickListener(this)
+        binding.root.viewTreeObserver.addOnGlobalFocusChangeListener { old, new ->
+            AppLog.d(
+                "FocusTrace",
+                "globalFocusChange: old=${old?.javaClass?.simpleName}#${old?.id} " +
+                    "new=${new?.javaClass?.simpleName}#${new?.id} " +
+                    "inTabBar=${new?.let { isInsideTabBar(it) } ?: false}"
+            )
+            recoverFocusAfterTouchModeBlindRestore(old, new)
+        }
+        NetworkRecoveryMonitor.start(this) {
+            appEventHub.dispatch(AppEventHub.Event.NetworkRecovered)
+        }
+        applyBackgroundImage()
+        applyCategoryEntryVisibility()
+        applyLiveEntryVisibility()
+        applyCctvLiveEntryVisibility()
+        applyCctvVodEntryVisibility()
+        applyHongguoEntryVisibility()
+        applyMeEntryVisibility()
+        AppLog.i(STARTUP_TAG, "STARTUP MainActivity.initView elapsed=${SystemClock.elapsedRealtime() - t0}ms")
+    }
+
+    override fun initData() {
+        val startMs = SystemClock.elapsedRealtime()
+        AppLog.i(STARTUP_TAG, "MainActivity.initData start")
+        if (restoredFromSavedState) {
+            restoreUiStateAfterRecreation()
+        } else {
+            pendingInitialTabIndex = resolveDefaultMainTabIndex()
+            binding.myTabView.restoreTabHighlight(pendingInitialTabIndex)
+            AppLog.i(STARTUP_TAG, "STARTUP deferInitialMainTab index=$pendingInitialTabIndex")
+        }
+        updateNavigationVisibility()
+        binding.root.viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
+            override fun onPreDraw(): Boolean {
+                if (binding.root.viewTreeObserver.isAlive) {
+                    binding.root.viewTreeObserver.removeOnPreDrawListener(this)
+                }
+                AppLog.i(
+                    STARTUP_TAG,
+                    "STARTUP T3a firstPreDraw elapsed=${SystemClock.elapsedRealtime() - activityCreateStartMs}ms"
+                )
+                revealStartupShell("first_pre_draw")
+                scheduleFastStartupAvatarRefresh()
+                // 壳首帧已提交，立刻在 IO 线程预热网络并发出推荐首页请求。
+                // 首页 Fragment 要再过两帧才会 loadInitial，loadSharedFirstPage 会直接
+                // await 这条 in-flight 请求，500ms 级的网络 RTT 与 Fragment 创建并行。
+                // （133b814a 壳层先行重构时误删了此调用，导致首屏请求完全串行在 UI 后面。）
+                (application as? MyBLBLApplication)?.scheduleStartupFirstPagePreload(delayMillis = 0L)
+                Choreographer.getInstance().postFrameCallback {
+                    binding.root.post {
+                        attachInitialContentAfterShellDraw()
+                    }
+                }
+                return true
+            }
+        })
+        // 壳层先出第一帧；首页 Fragment、网络预加载和提示弹窗下一帧再进入。
+        // 这样启动页只覆盖到主壳可绘制，不再被首页 ViewPager/列表创建拖住。
+        revealStartupShell("shell_initialized")
+        binding.root.post {
+            AppLog.i(STARTUP_TAG, "MainActivity first root post elapsed=${SystemClock.elapsedRealtime() - activityCreateStartMs}ms")
+            revealStartupShell("first_root_post")
+        }
+        AppLog.i(STARTUP_TAG, "MainActivity.initData end elapsed=${SystemClock.elapsedRealtime() - startMs}ms")
+    }
+
+    private fun resolveDefaultMainTabIndex(): Int {
+        return if (appSettings.getCachedString("default_start_page") == "动态") {
+            2
+        } else {
+            0
+        }
+    }
+
+    private fun attachInitialContentAfterShellDraw() {
+        if (startupInitialContentAttached) return
+        startupInitialContentAttached = true
+        val startMs = SystemClock.elapsedRealtime()
+        AppLog.i(
+            STARTUP_TAG,
+            "STARTUP initialContentPipeline start reason=after_shell_first_frame elapsed=${startMs - activityCreateStartMs}ms"
+        )
+        if (!restoredFromSavedState) {
+            attachInitialMainTabAfterShellDraw()
+        }
+        scheduleDeferredStartupTasks()
+        showUsageTipIfNeeded()
+        AppLog.i(
+            STARTUP_TAG,
+            "STARTUP initialContentPipeline end reason=after_shell_first_frame elapsed=${SystemClock.elapsedRealtime() - startMs}ms"
+        )
+    }
+
+    private fun attachInitialMainTabAfterShellDraw() {
+        val index = pendingInitialTabIndex
+        if (index !in fragments.indices) return
+        pendingInitialTabIndex = -1
+        val startMs = SystemClock.elapsedRealtime()
+        AppLog.i(STARTUP_TAG, "STARTUP attachInitialMainTab start index=$index elapsed=${startMs - activityCreateStartMs}ms")
+        showFragment(index)
+        postTabSelectedEvent(index)
+        // 冷启动侧栏初始焦点落在当前默认 tab 按钮（主页/动态）上：不指定时系统默认
+        // 焦点给布局里第一个可聚焦视图=最顶部的搜索按钮，而搜索是低频入口（用户反馈）
+        binding.myTabView.post {
+            binding.myTabView.focusCurrentTab()
+            AppLog.i(STARTUP_TAG, "STARTUP sidebar initial focus index=$index")
+        }
+        AppLog.i(STARTUP_TAG, "STARTUP attachInitialMainTab end index=$index elapsed=${SystemClock.elapsedRealtime() - activityCreateStartMs}ms")
+    }
+
+    private fun restoreUiStateAfterRecreation() {
+        val resolvedTabIndex = when {
+            restoredTabIndex in fragments.indices -> restoredTabIndex
+            else -> inferCurrentMainTabIndex()
+        }
+        if (resolvedTabIndex in fragments.indices) {
+            currentFragmentIndex = resolvedTabIndex
+            binding.myTabView.restoreTabHighlight(resolvedTabIndex)
+        } else {
+            pendingInitialTabIndex = 0
+            binding.myTabView.restoreTabHighlight(0)
+        }
+    }
+
+    private fun inferCurrentMainTabIndex(): Int {
+        val visibleMainIndex = fragments.indices.firstOrNull { index ->
+            supportFragmentManager.findFragmentByTag("fragment_$index")?.isVisible == true
+        }
+        if (visibleMainIndex != null) {
+            return visibleMainIndex
+        }
+        return fragments.indices.lastOrNull { index ->
+            supportFragmentManager.findFragmentByTag("fragment_$index")?.isAdded == true
+        } ?: -1
+    }
+
+    private fun applyBackgroundImage() {
+        val themeIndex = appSettings.getCachedInt("theme", 1)
+        if (themeIndex == 3) {
+            binding.mainBackgroundImage.apply {
+                setBackgroundResource(R.drawable.background_image)
+                visibility = View.VISIBLE
+            }
+        } else {
+            binding.mainBackgroundImage.apply {
+                background = null
+                visibility = View.GONE
+            }
+        }
+    }
+
+    fun applyCategoryEntryVisibility() {
+        val enabled = ContentFilter.isMinorProtectionEnabled(this)
+        binding.myTabView.setCategoryButtonVisible(!enabled)
+        if (enabled && currentFragmentIndex == 1) {
+            binding.myTabView.selectTab(0)
+        }
+    }
+
+    fun applyLiveEntryVisibility() {
+        val liveEntry = appSettings.getCachedString("live_entry", "关") ?: "关"
+        val show = liveEntry == "开"
+        binding.myTabView.setLiveButtonVisible(show)
+        if (!show && currentFragmentIndex == 3) {
+            binding.myTabView.selectTab(0)
+        }
+    }
+
+    fun applyCctvLiveEntryVisibility() {
+        val cctvLiveEntry = appSettings.getCachedString("cctv_live_entry", "关") ?: "关"
+        val show = cctvLiveEntry == "开"
+        binding.myTabView.setCctvLiveButtonVisible(show)
+        if (!show && currentFragmentIndex == CCTV_TAB_INDEX) {
+            binding.myTabView.selectTab(0)
+        }
+    }
+
+    fun applyCctvVodEntryVisibility() {
+        val entry = appSettings.getCachedString("cctv_vod_entry", "关") ?: "关"
+        val show = entry == "开"
+        binding.myTabView.setCctvVodButtonVisible(show)
+        if (!show && currentFragmentIndex == CCTV_VOD_TAB_INDEX) {
+            binding.myTabView.selectTab(0)
+        }
+    }
+
+    /** 红果短剧入口开关（默认关）：开启后侧栏出现红果按钮，与 B 站会话完全隔离。 */
+    fun applyHongguoEntryVisibility() {
+        val entry = appSettings.getCachedString("hongguo_entry", "关") ?: "关"
+        val show = entry == "开"
+        binding.myTabView.setHongguoButtonVisible(show)
+        if (!show && currentFragmentIndex == HONGGUO_TAB_INDEX) {
+            binding.myTabView.selectTab(0)
+        }
+    }
+
+    /**
+     * 「首页个人页签」开关（默认开）：开启时隐藏侧栏「我的」入口，历史/稍后观看/
+     * 收藏并入首页 tab；关闭时完全恢复。设置页切换后即时调用，冷启动由 initView 重放。
+     */
+    fun applyMeEntryVisibility() {
+        val personalTabs = HomeFragmentStateAdapter.personalTabsEnabled(appSettings)
+        binding.myTabView.setMeButtonVisible(!personalTabs)
+        // HomeFragment 尚未创建（lazy factory）时跳过，其 onViewCreated 会按开关读初始配置
+        (fragments.getOrNull(HOME_TAB_INDEX) as? HomeFragment)?.applyPersonalTabsEnabled(personalTabs)
+        if (personalTabs && currentFragmentIndex == ME_TAB_INDEX) {
+            binding.myTabView.selectTab(0)
+        }
+    }
+
+    private fun initFragments() {
+        // 不再在这里同步 new 6 个 Fragment，全部走 [getOrCreateFragment] 按需 lazy 构造。
+        // savedInstanceState 恢复路径下，FragmentManager 自带 restoredFragment，下面 showFragment
+        // 里的 findFragmentByTag 会优先命中，不会触发 factory。
+    }
+
+    private fun getOrCreateFragment(index: Int): Fragment {
+        return fragments[index] ?: fragmentFactories[index]().also { fragments[index] = it }
+    }
+
+    private fun showFragment(index: Int) {
+        if (index < 0 || index >= fragments.size) return
+        if (index == 1 && !binding.myTabView.isCategoryButtonVisible()) return
+        if (index == 3 && !binding.myTabView.isLiveButtonVisible()) return
+        // tab4 恒不构造 Fragment（选中即直进 MarmotLiveActivity，与按钮可见性无关）
+        if (index == CCTV_TAB_INDEX) return
+        if (index == CCTV_VOD_TAB_INDEX && !binding.myTabView.isCctvVodButtonVisible()) return
+        if (index == HONGGUO_TAB_INDEX && !binding.myTabView.isHongguoButtonVisible()) return
+        if (index == ME_TAB_INDEX && !binding.myTabView.isMeButtonVisible()) return
+        if (currentFragmentIndex == index) return
+
+        val fragmentTag = "fragment_$index"
+        val previousIndex = currentFragmentIndex
+        val currentFragment = supportFragmentManager.findFragmentByTag("fragment_$previousIndex")
+        val targetFragment = supportFragmentManager.findFragmentByTag(fragmentTag)
+            ?: getOrCreateFragment(index)
+
+        supportFragmentManager.commit {
+            setReorderingAllowed(true)
+
+            if (currentFragment != null) {
+                hide(currentFragment)
+            }
+
+            if (!targetFragment.isAdded) {
+                add(R.id.container, targetFragment, fragmentTag)
+            } else {
+                show(targetFragment)
+            }
+        }
+
+        currentFragmentIndex = index
+        mainNavigationViewModel.onTabSelected(index)
+        AppLog.d("FocusTrace", "showFragment done index=$index focusedAfter=${currentFocus?.javaClass?.simpleName}#${currentFocus?.id}")
+    }
+
+    private fun isInsideTabBar(view: View): Boolean {
+        var current: View? = view
+        while (current != null) {
+            if (current === binding.myTabView) return true
+            current = current.parent as? View
+        }
+        return false
+    }
+
+    /**
+     * 触摸模式盲恢复纠偏：鼠标/触摸点击会让窗口进入触摸模式并被系统清空焦点；下一次方向键
+     * 被 ViewRootImpl.checkForLeavingTouchModeAndConsume 直接消费（用于退出触摸模式，不派发
+     * 到 Activity），焦点由系统从 DecorView 盲找「第一个可聚焦 view」恢复——实测落到侧栏
+     * 按钮，脱离当前页内容区（红果/CCTV影视等均复现）。这里识别「无焦点 → 侧栏 + 近期有
+     * 触摸」的盲恢复特征，把焦点送回当前页内容入口（focusEntryFromMainTab）。纯遥控路径
+     * 无触摸时间戳，永不触发，行为不变。
+     */
+    private fun recoverFocusAfterTouchModeBlindRestore(oldFocus: View?, newFocus: View?) {
+        if (newFocus == null || !isInsideTabBar(newFocus)) return
+        // 盲恢复的 old 有两种形态：null（touch 进入时焦点彻底清空）或 RecyclerView
+        //（FOCUS_AFTER_DESCENDANTS 容器临时持焦，失焦后焦点先落容器）。正常遥控导航到
+        // 侧栏的 old 是具体卡片/按钮（ImageView、卡片 layout），不会是这两者。
+        if (oldFocus != null && oldFocus !is RecyclerView) return
+        val sinceTouchMs = SystemClock.uptimeMillis() - lastTouchDownAt
+        if (sinceTouchMs < 0 || sinceTouchMs > TOUCH_BLIND_RECOVERY_WINDOW_MS) return
+        // 仅主 tab 在最上层时干预：详情页/设置等 overlay 打开时交还系统默认行为
+        val top = supportFragmentManager.fragments.asReversed().firstOrNull { it.isVisible }
+        if (top == null || top.tag != "fragment_$currentFragmentIndex") return
+        AppLog.d("FocusTrace", "touch-mode blind restore corrected -> focusCurrentMainContent")
+        focusCurrentMainContent(anchorView = null)
+    }
+
+    override fun onTabSelected(index: Int) {
+        AppLog.d("FocusTrace", "onTabSelected index=$index focusedBefore=${currentFocus?.javaClass?.simpleName}#${currentFocus?.id}")
+        UiScale.probe("mainTab:$index", this)
+        // CCTV 直播 tab：直接进 Marmot 播放器，不加载频道列表 Fragment（对标参考 StartActivity→LiveActivity）
+        if (index == CCTV_TAB_INDEX) {
+            pendingFocusRestoreAfterExternalReturn = true
+            MarmotLiveActivity.start(this)
+            // 焦点留在 TV 直播按钮（直播返回后焦点仍在该按钮）
+            binding.myTabView.focusCurrentTab()
+            return
+        }
+        if (supportFragmentManager.backStackEntryCount > 0) {
+            focusRestoreAnchors.clear()
+            supportFragmentManager.popBackStackImmediate(null, FragmentManager.POP_BACK_STACK_INCLUSIVE)
+        }
+        showFragment(index)
+        postTabSelectedEvent(index)
+    }
+
+    override fun onTabReselected(index: Int) {
+        AppLog.d("FocusTrace", "onTabReselected index=$index focusedBefore=${currentFocus?.javaClass?.simpleName}#${currentFocus?.id}")
+        // CCTV 直播 tab 再次点击：重新进入直播（Tab 4 不持有 Fragment，reselect 也要能进直播）
+        if (index == CCTV_TAB_INDEX) {
+            pendingFocusRestoreAfterExternalReturn = true
+            MarmotLiveActivity.start(this)
+            return
+        }
+        // 其他侧边栏按钮再次点击，不触发刷新，避免抢走焦点
+    }
+
+    override fun onTabNavigateRight(index: Int): Boolean {
+        if (index !in fragments.indices) {
+            return false
+        }
+        focusCurrentMainContent(currentFocus, preferSpatialEntry = true)
+        return true
+    }
+
+    override fun onSideButtonNavigateRight(): Boolean {
+        val anchorView = currentFocus
+        focusCurrentMainContent(anchorView, preferSpatialEntry = true)
+        return true
+    }
+
+    override fun onSearchClick() {
+        val anchorView = currentFocus ?: binding.myTabView
+        if (supportFragmentManager.backStackEntryCount > 0) {
+            focusRestoreAnchors.clear()
+            supportFragmentManager.popBackStackImmediate(null, FragmentManager.POP_BACK_STACK_INCLUSIVE)
+        }
+        showFragment(SEARCH_TAB_INDEX)
+        if (currentFragmentIndex == SEARCH_TAB_INDEX) {
+            postTabSelectedEvent(SEARCH_TAB_INDEX)
+            binding.root.post {
+                focusCurrentMainContent(anchorView = anchorView, preferSpatialEntry = false)
+            }
+        }
+    }
+
+    override fun onSettingClick() {
+        if (isSettingsOverlayVisible()) {
+            return
+        }
+        openOverlayFragment(SettingsFragment.newInstance(), SETTINGS_OVERLAY_TAG)
+    }
+
+    override fun onAvatarClick() {
+        if (!sessionGateway.isLoggedIn()) {
+            openOverlayFragment(SignInFragment.newInstance(), "sign_in")
+            return
+        }
+        showUserInfoDialog()
+    }
+
+    private fun revealStartupShell(reason: String) {
+        if (startupShellRevealed) return
+        startupShellRevealed = true
+        AppLog.i(
+            STARTUP_TAG,
+            "STARTUP T3 revealShell reason=$reason elapsed=${SystemClock.elapsedRealtime() - activityCreateStartMs}ms"
+        )
+        window.setBackgroundDrawableResource(R.color.systemBackgroundColor)
+    }
+
+    private fun onHomeContentReady() {
+        if (!homeContentReadyLogged) {
+            homeContentReadyLogged = true
+            AppLog.i(
+                STARTUP_TAG,
+                "STARTUP T4 homeContentReady elapsed=${SystemClock.elapsedRealtime() - activityCreateStartMs}ms"
+            )
+        }
+        revealStartupShell("home_content_ready")
+        schedulePostHomeAvatarRefresh()
+    }
+
+    private fun refreshAvatar(
+        allowNetworkFetch: Boolean = true,
+        forceNetworkFetch: Boolean = false
+    ) {
+        if (!sessionGateway.isLoggedIn()) {
+            avatarRefreshJob?.cancel()
+            binding.myTabView.setAvatarUrl(null)
+            binding.myTabView.setAvatarBadge(officialVerifyType = -1)
+            return
+        }
+
+        val cachedInfo = sessionGateway.getUserInfo()
+        if (!cachedInfo?.face.isNullOrBlank()) {
+            binding.myTabView.setAvatarUrl(cachedInfo.face)
+            setTabBarBadge(cachedInfo)
+            if (!forceNetworkFetch) return
+        }
+
+        if (!allowNetworkFetch) return
+
+        if (avatarRefreshJob?.isActive == true) return
+        avatarRefreshJob = lifecycleScope.launch {
+            val startMs = SystemClock.elapsedRealtime()
+            AppLog.i(STARTUP_TAG, "STARTUP avatarRefresh start force=$forceNetworkFetch")
+            val refreshed = userRepository.refreshCurrentUserInfo().getOrNull()
+            if (sessionGateway.isLoggedIn()) {
+                binding.myTabView.setAvatarUrl(refreshed?.face)
+                setTabBarBadge(refreshed)
+            }
+            AppLog.i(
+                STARTUP_TAG,
+                "STARTUP avatarRefresh end elapsed=${SystemClock.elapsedRealtime() - startMs}ms hasFace=${!refreshed?.face.isNullOrBlank()}"
+            )
+        }
+    }
+
+    private fun scheduleFastStartupAvatarRefresh() {
+        if (startupAvatarRefreshScheduled) return
+        startupAvatarRefreshScheduled = true
+        binding.root.postDelayed({
+            lifecycleScope.launch {
+                withContext(Dispatchers.IO) {
+                    (application as? MyBLBLApplication)?.ensureSessionRuntimeReady("startupAvatarCache")
+                }
+                refreshAvatar(allowNetworkFetch = false)
+            }
+        }, 300L)
+    }
+
+    private fun schedulePostHomeAvatarRefresh() {
+        if (postHomeAvatarRefreshScheduled) return
+        postHomeAvatarRefreshScheduled = true
+        binding.root.postDelayed({
+            lifecycleScope.launch {
+                withContext(Dispatchers.IO) {
+                    (application as? MyBLBLApplication)?.ensureDataRuntimeReady("postHomeAvatarNetwork")
+                }
+                refreshAvatar(allowNetworkFetch = true, forceNetworkFetch = true)
+            }
+        }, 250L)
+    }
+
+    private fun setTabBarBadge(info: UserDetailInfoModel?) {
+        if (info == null) {
+            binding.myTabView.setAvatarBadge(officialVerifyType = -1)
+            return
+        }
+        val oType = info.officialVerify?.type ?: info.official?.let { if (it.role > 0) it.type else -1 } ?: -1
+        val vStatus = info.vipStatus.coerceAtLeast(info.vip?.vipStatus ?: 0)
+        val vType = info.vipType.coerceAtLeast(info.vip?.vipType ?: 0)
+        binding.myTabView.setAvatarBadge(
+            officialVerifyType = oType,
+            vipStatus = vStatus,
+            vipType = vType
+        )
+    }
+
+    private fun scheduleDeferredStartupTasks() {
+        if (startupTasksScheduled) {
+            return
+        }
+        startupTasksScheduled = true
+        AppStartupScheduler()
+            .addTask("refreshAvatar", AppStartupScheduler.Phase.DELAYED, delayMs = 4000L) {
+                lifecycleScope.launch {
+                    if (postHomeAvatarRefreshScheduled) {
+                        return@launch
+                    }
+                    withContext(Dispatchers.IO) {
+                        (application as? MyBLBLApplication)?.ensureDataRuntimeReady("refreshAvatar")
+                    }
+                    refreshAvatar(allowNetworkFetch = true)
+                }
+            }
+            .addTask("imageCdnPrewarm", AppStartupScheduler.Phase.DELAYED, delayMs = 2500L) {
+                ImageLoader.prewarmCdn()
+            }
+            // 个人数据预取：历史/稍后观看/收藏夹列表都是点进 tab 才发请求，真机 RTT 下
+            // 用户要干等整个网络往返。首屏稳定后（1.8s）后台预取第一页，进"我的"直接渲染。
+            .addTask("personalFeedPrewarm", AppStartupScheduler.Phase.DELAYED, delayMs = 1800L) {
+                lifecycleScope.launch {
+                    withContext(Dispatchers.IO) {
+                        (application as? MyBLBLApplication)?.ensureDataRuntimeReady("personalFeedPrewarm")
+                    }
+                    if (sessionGateway.isLoggedIn()) {
+                        personalFeedPrewarmer.prewarm()
+                    }
+                }
+            }
+            // player 与 security 预热放 IDLE 阶段：首页 firstPreDraw 后的空闲间隙立即触发，
+            // 远早于 DELAYED 3-3.5s。实测用户常在启动后 3s 左右点视频，DELAYED 3s/3.5s 会
+            // 导致预热赶不上首播（security 仍串行阻塞 playinfo ~120ms，player 仍冷建 ~56ms）。
+            // IDLE 在主线程空闲时跑，不抢首页渲染。
+            .addTask("playerPrewarm", AppStartupScheduler.Phase.IDLE) {
+                PlayerInstancePool.prewarm(this@MainActivity)
+            }
+            .addTask("securityPrewarm", AppStartupScheduler.Phase.IDLE) {
+                lifecycleScope.launch {
+                    withContext(Dispatchers.IO) {
+                        runCatching { NetworkManager.ensureHealthyForPlay() }
+                    }
+                }
+            }
+            .addTask("wbiKeys", AppStartupScheduler.Phase.IDLE) {
+                lifecycleScope.launch {
+                    withContext(Dispatchers.IO) {
+                        (application as? MyBLBLApplication)?.ensureDataRuntimeReady("wbiKeys")
+                    }
+                    runCatching { sessionGateway.ensureWbiKeys() }
+                }
+            }
+            // 启动自动检查更新：放 refreshAvatar(4s) 之后错峰，不抢启动期网络。
+            // GitHub API 国内可达性一般，3 次重试全在后台协程，拖多久都不影响前台
+            .addTask("autoUpdateCheck", AppStartupScheduler.Phase.DELAYED, delayMs = 6000L) {
+                lifecycleScope.launch { checkUpdateOnStartup() }
+            }
+            // 登录态健康检查：SESSDATA 过期后降级型接口（时间表等）只回 code=0 的
+            // 兜底数据不报 -101，App 侧无从感知；启动后主动调 nav 校验一次（24h 频控），
+            // 确认失效且恢复失败时提示用户重新扫码登录
+            .addTask("sessionHealthCheck", AppStartupScheduler.Phase.DELAYED, delayMs = 9000L) {
+                lifecycleScope.launch { checkSessionHealthOnStartup() }
+            }
+            .execute()
+    }
+
+    /**
+     * 启动后主动校验登录态（见 NetworkManager.checkSessionHealth 注释）。
+     * 仅"确认失效且恢复失败"才提示用户；网络异常静默，下次启动再查。
+     */
+    private suspend fun checkSessionHealthOnStartup() {
+        val result = runCatching { NetworkManager.checkSessionHealth() }
+            .getOrElse {
+                if (it is kotlinx.coroutines.CancellationException) throw it
+                AppLog.w("MainActivity", "session health check failed: ${it.message}")
+                return
+            }
+        if (result == NetworkManager.SessionHealthResult.EXPIRED_CLEARED) {
+            AppToast.show(this, R.string.session_expired_relogin)
+        }
+    }
+
+    /**
+     * 启动后静默检查更新：有新版本且未被用户「稍后」忽略时自动弹确认弹窗。
+     * 任何失败只记日志不打扰用户；设置页手动检查正在弹窗/下载时直接避让。
+     */
+    private suspend fun checkUpdateOnStartup() {
+        if (UpdateFlowDialog.isBusy) return
+        try {
+            val releaseInfo = ApkUpdater.fetchLatestRelease()
+            if (!ApkUpdater.isRemoteNewer(releaseInfo.versionName)) return
+            if (appSettings.getCachedString(ApkUpdater.KEY_IGNORED_VERSION) == releaseInfo.versionName) return
+            // fetch 期间用户可能已进设置手动检查弹窗，落弹窗前再守一次
+            if (UpdateFlowDialog.isBusy) return
+            UpdateFlowDialog.showConfirmDialog(
+                context = this@MainActivity,
+                releaseInfo = releaseInfo,
+                cancelTextRes = R.string.update_later,
+                onDismissedWithoutDownload = {
+                    appSettings.putStringAsync(ApkUpdater.KEY_IGNORED_VERSION, releaseInfo.versionName)
+                },
+            )
+        } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            AppLog.w("MainActivity", "startup update check failed: ${e.message}")
+        }
+    }
+
+    fun focusLeftFunctionArea(sourceView: View? = currentFocus): Boolean {
+        if (binding.myTabView.visibility != View.VISIBLE) {
+            return false
+        }
+        return binding.myTabView.focusNearestButtonTo(sourceView)
+    }
+
+    /** BACK 从二级 tab 栏回退的落点：主边栏当前选中的主 tab 按钮（对齐 blbl requestFocusSidebarSelectedNav）。 */
+    fun focusSidebarCurrentTab(): Boolean {
+        if (binding.myTabView.visibility != View.VISIBLE) {
+            return false
+        }
+        return binding.myTabView.focusCurrentTab()
+    }
+
+    fun showTabBar(show: Boolean) {
+        binding.myTabView.visibility = if (show) View.VISIBLE else View.GONE
+        binding.divide.visibility = if (show) View.VISIBLE else View.GONE
+    }
+
+    private fun handleBackPressed() {
+        if (dispatchBackPressedToVisibleFragment()) {
+            schedulePostBackFocusRestore()
+            return
+        }
+
+        if (supportFragmentManager.backStackEntryCount > 0) {
+            pendingFocusRestoreDelayMs =
+                if (isSettingsOverlayVisible()) SETTINGS_OVERLAY_EXIT_ANIM_MS else 0L
+            supportFragmentManager.popBackStack()
+            return
+        }
+
+        mainNavigationViewModel.dispatch(MainNavigationViewModel.Event.BackPressed)
+
+        // 退出前先回主页：遥控只把焦点放到主页按钮（不切页，详情页栈留着）；
+        // 触屏没有焦点可停，直接切到主页。再按一次才是真正退出。
+        if (returnToHomeBeforeExit()) {
+            exitTime = 0L
+            return
+        }
+
+        if (System.currentTimeMillis() - exitTime <= exitInterval) {
+            finish()
+            return
+        }
+
+        exitTime = System.currentTimeMillis()
+        AppToast.show(this, getString(R.string.app_exit))
+        schedulePostBackFocusRestore()
+    }
+
+    /**
+     * 退出链的最后一步。侧栏已经停在主页上时返回 false，交给双击退出；
+     * 否则遥控聚焦主页按钮、触屏切到主页，本次返回不算退出。
+     */
+    private fun returnToHomeBeforeExit(): Boolean {
+        if (binding.myTabView.visibility != View.VISIBLE) {
+            return false
+        }
+        if (binding.myTabView.isHomeTabFocused()) {
+            return false
+        }
+        if (binding.myTabView.isInTouchMode) {
+            if (binding.myTabView.isHomeTabSelected()) {
+                return false
+            }
+            // 走 selectTab 而非直接回调 onTabSelected：前者才会更新侧栏 currentSelectedIndex
+            // 与高亮，否则下次返回时 isHomeTabSelected() 读到旧值，退出链永远卡在这一步。
+            binding.myTabView.selectTab(HOME_TAB_INDEX)
+            return true
+        }
+        return binding.myTabView.focusHomeTab()
+    }
+
+    private fun schedulePostBackFocusRestore() {
+        binding.root.postDelayed({
+            if (isFinishing || isDestroyed) return@postDelayed
+            val currentFocus = currentFocus
+            if (currentFocus != null && currentFocus.isAttachedToWindow && currentFocus.isShown && currentFocus.isFocusable) {
+                return@postDelayed
+            }
+            val handledByContent = focusCurrentMainContent(anchorView = null, preferSpatialEntry = false)
+            if (!handledByContent) {
+                binding.myTabView.focusCurrentTab()
+            }
+        }, 100L)
+    }
+
+    fun closeTopOverlayFromUi() {
+        if (supportFragmentManager.backStackEntryCount > 0) {
+            pendingFocusRestoreDelayMs =
+                if (isSettingsOverlayVisible()) SETTINGS_OVERLAY_EXIT_ANIM_MS else 0L
+            supportFragmentManager.popBackStack()
+            return
+        }
+        handleBackPressed()
+    }
+
+    private fun dispatchBackPressedToVisibleFragment(): Boolean {
+        val topFragment = supportFragmentManager.fragments
+            .asReversed()
+            .firstOrNull { it.isVisible }
+            ?: return false
+        return topFragment.findBackPressedHandler()?.onBackPressed() == true
+    }
+
+    private fun Fragment.findBackPressedHandler(): OnBackPressedHandler? {
+        childFragmentManager.fragments
+            .asReversed()
+            .firstOrNull { it.isVisible }
+            ?.findBackPressedHandler()
+            ?.let { return it }
+        return this as? OnBackPressedHandler
+    }
+
+    fun openOverlayFragment(fragment: Fragment, tag: String) {
+        openFragmentWithReferenceBehavior(fragment, tag, addToBackStack = true)
+    }
+
+    fun openInHostContainer(fragment: Fragment, addToBackStack: Boolean = true) {
+        openFragmentWithReferenceBehavior(
+            fragment = fragment,
+            tag = fragment::class.java.name,
+            addToBackStack = addToBackStack
+        )
+    }
+
+    private fun openFragmentWithReferenceBehavior(
+        fragment: Fragment,
+        tag: String,
+        addToBackStack: Boolean
+    ) {
+        if (addToBackStack) {
+            currentFocus?.let { activeFocus ->
+                focusRestoreAnchors.addLast(
+                    FocusRestoreAnchor(
+                        viewRef = WeakReference(activeFocus)
+                    )
+                )
+            }
+        }
+        val isSettingsOverlay = isSettingsOverlay(fragment = fragment, tag = tag)
+        val isVideoPlayerOverlay = isVideoPlayerOverlay(fragment = fragment, tag = tag)
+
+        if (!isVideoPlayerOverlay) {
+            showTabBar(false)
+            supportFragmentManager.fragments
+                .asReversed()
+                .firstOrNull { it.isVisible }
+                ?.view
+                ?.clearFocus()
+        }
+
+        supportFragmentManager.commit {
+            if (isSettingsOverlay) {
+                setCustomAnimations(
+                    R.anim.m3_side_sheet_enter_from_right,
+                    0,
+                    0,
+                    R.anim.m3_side_sheet_exit_to_right
+                )
+            } else {
+                setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
+            }
+
+            supportFragmentManager.fragments
+                .filter { it.isAdded && it.isVisible }
+                .forEach { visibleFragment ->
+                    hide(visibleFragment)
+                }
+
+            add(R.id.container, fragment, tag)
+            if (addToBackStack) {
+                addToBackStack(tag)
+            }
+        }
+        if (isVideoPlayerOverlay) {
+            showTabBar(false)
+        }
+    }
+
+    fun showUserInfoDialog() {
+        if (isFinishing || isDestroyed) {
+            return
+        }
+        UserInfoDialog(this).show()
+    }
+
+    private fun showUsageTipIfNeeded() {
+        if (restoredFromSavedState) return
+        if (appSettings.getCachedBoolean("usage_tip_shown")) return
+        if (isFinishing || isDestroyed) return
+        appSettings.putBooleanAsync("usage_tip_shown", true)
+        UsageTipDialog(this).show()
+    }
+
+    private fun dispatchVideoBlockedEventToCurrentFragment(event: AppEventHub.Event.VideoBlockedByMinorProtection) {
+        supportFragmentManager.fragments.forEach { fragment ->
+            if (fragment is OnVideoBlockedListener) {
+                (fragment as OnVideoBlockedListener).onVideoBlocked(event.aid, event.bvid)
+            }
+            fragment.childFragmentManager.fragments.forEach { child ->
+                if (child is OnVideoBlockedListener) {
+                    (child as OnVideoBlockedListener).onVideoBlocked(event.aid, event.bvid)
+                }
+            }
+        }
+    }
+
+    interface OnVideoBlockedListener {
+        fun onVideoBlocked(aid: Long, bvid: String)
+    }
+
+    private fun updateNavigationVisibility() {
+        val shouldShowTabBar = supportFragmentManager.backStackEntryCount == 0
+        if (shouldShowTabBar) {
+            focusRestoreAnchors.clear()
+        }
+        showTabBar(shouldShowTabBar)
+    }
+
+    private fun restoreFocusAfterOverlayPop() {
+        val anchor = focusRestoreAnchors.removeLastOrNull()
+        val delayMs = pendingFocusRestoreDelayMs
+        pendingFocusRestoreDelayMs = 0L
+        binding.root.postDelayed({
+            val target = anchor?.viewRef?.get()
+            if (target?.isAttachedToWindow == true && target.isShown && target.isFocusable) {
+                val result = target.requestFocus()
+                if (result) {
+                    return@postDelayed
+                }
+            }
+            val handledByContent = focusCurrentMainContent(
+                anchorView = target,
+                preferSpatialEntry = target != null
+            )
+            if (handledByContent) {
+                return@postDelayed
+            }
+            val handledByTabBar = binding.myTabView.focusCurrentTab()
+            if (handledByTabBar) {
+                return@postDelayed
+            }
+            supportFragmentManager.fragments
+                .asReversed()
+                .firstOrNull { it.isVisible }
+                ?.view
+                ?.let { visibleRoot ->
+                    val currentFocus = visibleRoot.findFocus()
+                    currentFocus?.requestFocus()
+                }
+        }, delayMs)
+    }
+
+    fun skipNextFocusRestore() {
+        if (focusRestoreAnchors.isNotEmpty()) {
+            focusRestoreAnchors.removeLastOrNull()
+        }
+    }
+
+    private fun isSettingsOverlay(fragment: Fragment, tag: String): Boolean {
+        return tag == SETTINGS_OVERLAY_TAG || fragment is SettingsFragment
+    }
+
+    private fun isVideoPlayerOverlay(fragment: Fragment, tag: String): Boolean {
+        return fragment is VideoPlayerFragment || tag.startsWith("video_player:")
+    }
+
+    private fun isSettingsOverlayVisible(): Boolean {
+        return supportFragmentManager.fragments
+            .asReversed()
+            .firstOrNull { it.isVisible }
+            ?.tag == SETTINGS_OVERLAY_TAG
+    }
+
+    private fun focusCurrentMainContent(
+        anchorView: View? = currentFocus,
+        preferSpatialEntry: Boolean = false
+    ): Boolean {
+        val currentFragment = supportFragmentManager.findFragmentByTag("fragment_$currentFragmentIndex")
+        return (currentFragment as? MainTabFocusTarget)
+            ?.focusEntryFromMainTab(anchorView, preferSpatialEntry) == true
+    }
+
+    private fun shouldFinishDuplicateLauncherLaunch(): Boolean {
+        val launchIntent = intent
+        return !isTaskRoot &&
+            launchIntent?.action == android.content.Intent.ACTION_MAIN &&
+            launchIntent.hasCategory(android.content.Intent.CATEGORY_LAUNCHER)
+    }
+
+    private fun postTabSelectedEvent(index: Int) {
+        mainNavigationViewModel.dispatch(MainNavigationViewModel.Event.MainTabSelected(index))
+    }
+
+    override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent?): Boolean {
+        // 青少年模式：休息遮罩可见时，拦截除返回键外的所有按键，防止操作背后内容
+        if (binding.teenRestOverlay.visibility == View.VISIBLE &&
+            keyCode != android.view.KeyEvent.KEYCODE_BACK
+        ) {
+            return true
+        }
+        if (event?.action == android.view.KeyEvent.ACTION_DOWN && keyCode == android.view.KeyEvent.KEYCODE_MENU) {
+            val focused = currentFocus
+            if (focused != null && isInsideRecyclerView(focused)) {
+                mainNavigationViewModel.dispatch(MainNavigationViewModel.Event.MenuPressed)
+            } else if (focused != null && isInsideTabLayout(focused)) {
+                // 焦点停在二级 tab 栏时菜单键同样触发刷新（对齐 blbl：MENU 即刷新键，
+                // 重选 tab 后焦点在 tab 上，不能因此丢刷新入口）
+                mainNavigationViewModel.dispatch(MainNavigationViewModel.Event.MenuPressed)
+            }
+        }
+        return super.onKeyDown(keyCode, event)
+    }
+
+    private fun isInsideRecyclerView(view: View): Boolean {
+        var current: View? = view
+        while (current != null) {
+            if (current is RecyclerView) return true
+            current = current.parent as? View
+        }
+        return false
+    }
+
+    private fun isInsideTabLayout(view: View): Boolean {
+        var current: View? = view
+        while (current != null) {
+            if (current is TabLayout) return true
+            current = current.parent as? View
+        }
+        return false
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        mainNavigationViewModel.onTabSelected(currentFragmentIndex)
+        super.onSaveInstanceState(outState)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        pendingDetailAid = intent.getLongExtra(EXTRA_DETAIL_AID, 0L)
+        pendingDetailBvid = intent.getStringExtra(EXTRA_DETAIL_BVID)
+    }
+
+    override fun onResumeFragments() {
+        super.onResumeFragments()
+        consumePendingDetailRoute()
+    }
+
+    /**
+     * 消费外部 Activity（播放页长按菜单「视频详情」）的待处理路由：
+     * fragment manager 就绪后打开详情页；无参数时零开销直接返回。
+     */
+    private fun consumePendingDetailRoute() {
+        val aid = pendingDetailAid
+        val bvid = pendingDetailBvid
+        if (aid <= 0L && bvid.isNullOrBlank()) return
+        pendingDetailAid = 0L
+        pendingDetailBvid = null
+        AppLog.d("VideoRouteNav", "host resume open detail: aid=$aid, bvid=$bvid")
+        val fragment = when {
+            aid > 0L -> VideoDetailFragment.newInstance(aid)
+            else -> VideoDetailFragment.newInstance(bvid ?: return)
+        }
+        openInHostContainer(fragment)
+    }
+
+    override fun onResume() {
+        AppLog.i(TEEN_REST_DIAG_TAG, "onResume start")
+        super.onResume()
+        AppLog.i(TEEN_REST_DIAG_TAG, "onResume after super, before refresh")
+        refreshTeenRestOverlay()
+        // TV 常年挂机不杀进程时，启动期那次健康检查可能已是几天前的最后一次；
+        // resume 补查一次，24h 频控保证真实请求每天最多一次，并发由 inFlight 守卫合并
+        lifecycleScope.launch { checkSessionHealthOnStartup() }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        teenRestHandler.removeCallbacks(teenRestTicker)
+        AppLog.i(TEEN_REST_DIAG_TAG, "onPause")
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        AppLog.i(TEEN_REST_DIAG_TAG, "onWindowFocusChanged hasFocus=$hasFocus")
+        dumpTeenRestOverlayState("onWindowFocusChanged($hasFocus)")
+        // 从 MarmotLiveActivity 返回后系统自动焦点回落并不可靠（独立 Activity，无任何
+        // 恢复回调可挂），窗口焦点回来后若整棵视图树无焦点视图则兜底拉回侧栏当前 tab 按钮；
+        // 焦点仍有时不动，避免改变播放器等其它返回路径的正常回落行为。
+        if (hasFocus && pendingFocusRestoreAfterExternalReturn) {
+            pendingFocusRestoreAfterExternalReturn = false
+            binding.root.post {
+                val focused = currentFocus
+                AppLog.d("FocusTrace", "restoreFocusAfterExternalReturn focused=${focused?.javaClass?.simpleName}#${focused?.id}")
+                // CCTV 直播 tab 不持有 Fragment（点选时直接拉起直播 Activity）：进入直播后
+                // 侧栏选中高亮停在直播按钮，但内容区仍是进入前的页面；焦点留在直播按钮上
+                // 合法存在，下方"无焦点才兜底"永远不触发——返回时须把高亮/焦点恢复到实际
+                // 显示的 tab（issue#106：退出直播后左侧焦点仍显示在直播上）
+                if (binding.myTabView.getCurrentSelectedIndex() == CCTV_TAB_INDEX &&
+                    currentFragmentIndex != CCTV_TAB_INDEX
+                ) {
+                    AppLog.d("FocusTrace", "restoreTabHighlightAfterLiveExit index=$currentFragmentIndex")
+                    binding.myTabView.restoreTabHighlight(currentFragmentIndex)
+                    binding.myTabView.focusCurrentTab()
+                    return@post
+                }
+                if (focused == null || !focused.isShown) {
+                    focusSidebarCurrentTab()
+                }
+            }
+        }
+    }
+
+    /** 检查青少年模式休息状态：休息中显示遮罩并启动倒计时，否则确保遮罩隐藏。 */
+    private fun refreshTeenRestOverlay() {
+        val resting = com.mytvb.core.common.content.TeenModeTimer.isResting()
+        AppLog.i(TEEN_REST_DIAG_TAG, "refreshTeenRestOverlay isResting=$resting")
+        if (resting) {
+            showTeenRestOverlay()
+        } else {
+            hideTeenRestOverlay()
+        }
+    }
+
+    private fun showTeenRestOverlay() {
+        binding.teenRestOverlay.visibility = View.VISIBLE
+        updateTeenRestCountdown()
+        teenRestHandler.removeCallbacks(teenRestTicker)
+        teenRestHandler.postDelayed(teenRestTicker, 1000L)
+        // 延迟一帧后再 dump 一次，看 measure/layout 后的真实尺寸（排除未触发布局）
+        binding.teenRestOverlay.post { dumpTeenRestOverlayState("showTeenRestOverlay+postFrame") }
+        dumpTeenRestOverlayState("showTeenRestOverlay")
+    }
+
+    private fun hideTeenRestOverlay() {
+        binding.teenRestOverlay.visibility = View.GONE
+        teenRestHandler.removeCallbacks(teenRestTicker)
+        dumpTeenRestOverlayState("hideTeenRestOverlay")
+    }
+
+    /** 用墙钟算剩余时间并刷新文字，到期则撤掉遮罩。 */
+    private fun updateTeenRestCountdown() {
+        val restStart = com.mytvb.core.common.content.TeenModeTimer.getRestStartMs()
+        val restLimitMs = com.mytvb.core.common.content.TeenModeTimer.getRestLimitMs()
+        if (restStart <= 0L || restLimitMs <= 0L) {
+            AppLog.i(TEEN_REST_DIAG_TAG, "updateTeenRestCountdown early-return: restStart=$restStart restLimitMs=$restLimitMs")
+            hideTeenRestOverlay()
+            return
+        }
+        val remainingMs = restLimitMs - (System.currentTimeMillis() - restStart)
+        if (remainingMs <= 0L) {
+            // 休息到期：撤掉遮罩（isResting 下次调用会自动清零累计）
+            AppLog.i(TEEN_REST_DIAG_TAG, "updateTeenRestCountdown rest expired, remainingMs=$remainingMs")
+            hideTeenRestOverlay()
+            return
+        }
+        val totalSec = (remainingMs / 1000L).toInt()
+        val min = totalSec / 60
+        val sec = totalSec % 60
+        binding.teenRestCountdown.text = getString(R.string.teen_rest_countdown, min, sec)
+    }
+
+    /**
+     * 诊断专用：dump 遮罩及其两个 TextView 的可见性/尺寸/绘制状态，以及它在 DecorView 中的层级。
+     * 只读，不改动任何状态。用于定位"纯黑屏、倒计时不显示"问题。
+     */
+    private fun dumpTeenRestOverlayState(reason: String) {
+        try {
+            val overlay = binding.teenRestOverlay
+            val title = binding.teenRestTitle
+            val countdown = binding.teenRestCountdown
+            val sb = StringBuilder()
+            sb.append("dump[$reason]: ")
+            sb.append("overlay{vis=").append(visibilityName(overlay.visibility))
+                .append(",shown=").append(overlay.isShown)
+                .append(",w=").append(overlay.width).append(",h=").append(overlay.height)
+                .append(",alpha=").append(overlay.alpha)
+                .append(",bg=").append(overlay.background?.javaClass?.simpleName)
+                .append(",layer=").append(findViewLayerIndex(overlay)).append("}")
+            sb.append(" title{vis=").append(visibilityName(title.visibility))
+                .append(",shown=").append(title.isShown)
+                .append(",w=").append(title.width).append(",h=").append(title.height)
+                .append(",text=").append(title.text).append("}")
+            sb.append(" countdown{vis=").append(visibilityName(countdown.visibility))
+                .append(",shown=").append(countdown.isShown)
+                .append(",w=").append(countdown.width).append(",h=").append(countdown.height)
+                .append(",text=").append(countdown.text).append("}")
+            // window 层状态
+            val decor = window.decorView
+            sb.append(" decor{childCount=").append((decor as? android.view.ViewGroup)?.childCount ?: -1)
+                .append(",decorHasFocus=").append(decor.hasWindowFocus())
+                .append(",actionBarShown=").append(supportActionBar?.isShowing ?: "null").append("}")
+            AppLog.i(TEEN_REST_DIAG_TAG, sb.toString())
+        } catch (t: Throwable) {
+            AppLog.e(TEEN_REST_DIAG_TAG, "dump failed: ${t.javaClass.simpleName}: ${t.message}")
+        }
+    }
+
+    private fun visibilityName(v: Int): String = when (v) {
+        View.VISIBLE -> "VISIBLE"
+        View.INVISIBLE -> "INVISIBLE"
+        View.GONE -> "GONE"
+        else -> v.toString()
+    }
+
+    /** 返回 overlay 在 DecorView 树中"自顶向下"的 z 序索引（0=最底层）。值越大越靠上层。 */
+    private fun findViewLayerIndex(target: View): Int {
+        val decor = window.decorView
+        val flat = ArrayList<View>()
+        flattenDescendants(decor as? android.view.ViewGroup, flat)
+        flat.forEachIndexed { idx, v -> if (v === target) return idx }
+        return -1
+    }
+
+    private fun flattenDescendants(group: android.view.ViewGroup?, out: ArrayList<View>) {
+        if (group == null) return
+        for (i in 0 until group.childCount) {
+            val c = group.getChildAt(i)
+            out.add(c)
+            if (c is android.view.ViewGroup) flattenDescendants(c, out)
+        }
+    }
+}

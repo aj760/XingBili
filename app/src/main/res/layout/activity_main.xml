@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:background="?attr/backgroundColor"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+    <!--
+      ~ 默认不设 background drawable，避免冷启动 inflate 时主线程同步 decode 26KB 全屏 webp
+      ~ (实测在低端 TV / 模拟器上 100~300ms)。
+      ~ 只有 ClassicsTheme (themeIndex == 3) 才需要这张背景，由 MainActivity.applyBackgroundImage()
+      ~ 运行时按需 setBackgroundResource。
+      -->
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/mainBackgroundImage"
+        android:visibility="gone"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"/>
+    <com.mytvb.core.ui.navigation.TabBarView
+        android:id="@+id/myTabView"
+        android:layout_width="@dimen/px100"
+        android:layout_height="match_parent"
+        app:layout_constraintStart_toStartOf="parent"/>
+    <View
+        android:id="@+id/divide"
+        android:background="?attr/dividerColor"
+        android:layout_width="@dimen/px1"
+        android:layout_height="match_parent"
+        android:layout_marginTop="@dimen/px120"
+        android:layout_marginBottom="@dimen/px120"
+        app:layout_constraintStart_toEndOf="@+id/myTabView"/>
+    <FrameLayout
+        android:id="@+id/container"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/divide"/>
+    <TextView
+        android:textColor="?android:attr/textColorPrimary"
+        android:id="@+id/textViewDebug"
+        android:visibility="gone"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"/>
+
+    <!-- 青少年模式：休息期间全屏遮罩 + 倒计时 -->
+    <LinearLayout
+        android:id="@+id/teenRestOverlay"
+        android:visibility="gone"
+        android:background="#FF000000"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+        <TextView
+            android:id="@+id/teenRestTitle"
+            android:text="@string/activity_teen_rest_banner"
+            android:textColor="#FFFFFF"
+            android:textSize="@dimen/px48"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:layout_marginBottom="@dimen/px60"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+        <TextView
+            android:id="@+id/teenRestCountdown"
+            android:textColor="#FFFFFF"
+            android:textSize="@dimen/px80"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+    </LinearLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>

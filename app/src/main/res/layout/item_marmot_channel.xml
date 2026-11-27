@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="@dimen/px5"
+    android:background="@drawable/bg_marmot_channel_item"
+    android:clickable="true"
+    android:descendantFocusability="blocksDescendants"
+    android:focusable="true"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:padding="@dimen/px23">
+
+    <TextView
+        android:id="@+id/playing_mark"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="▶ "
+        android:textColor="#00FF00"
+        android:textSize="@dimen/px32"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/channel_name"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:ellipsize="end"
+        android:gravity="center_vertical"
+        android:maxLines="1"
+        android:textColor="@android:color/white"
+        android:textSize="@dimen/px36" />
+
+    <ImageView
+        android:id="@+id/favorite_icon"
+        android:layout_width="@dimen/px54"
+        android:layout_height="@dimen/px54"
+        android:layout_marginStart="@dimen/px18"
+        android:clickable="false"
+        android:contentDescription="@null"
+        android:focusable="false"
+        android:src="@drawable/ic_marmot_favorite_border"
+        android:visibility="gone" />
+</LinearLayout>

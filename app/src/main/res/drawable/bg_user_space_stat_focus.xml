@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 全屏页头部统计（关注数/粉丝数）：焦点态与列表 tab 同款紫色圆角块，非焦点透明 -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:exitFadeDuration="@android:integer/config_shortAnimTime">
+    <item android:state_focused="true">
+        <shape>
+            <solid android:color="?attr/colorControlHighlight" />
+            <corners android:radius="@dimen/px15" />
+        </shape>
+    </item>
+    <item>
+        <shape>
+            <solid android:color="@android:color/transparent" />
+            <corners android:radius="@dimen/px15" />
+        </shape>
+    </item>
+</selector>

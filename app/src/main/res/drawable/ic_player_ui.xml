@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:height="150px"
+    android:width="150px"
+    android:viewportWidth="1024"
+    android:viewportHeight="1024">
+    <!-- 播放界面：播放器窗口 + 圆角播放三角 + 底部播放进度条（进度球居中）；
+         「显示」是带底座的空显示器，「播放设置」是框内只有播放三角，三者互不撞脸 -->
+    <path
+        android:fillColor="#ffffff"
+        android:fillType="evenOdd"
+        android:pathData="M140,192H884A108,108 0 0 1 992,300V724A108,108 0 0 1 884,832H140A108,108 0 0 1 32,724V300A108,108 0 0 1 140,192ZM140,224H884A76,76 0 0 1 960,300V724A76,76 0 0 1 884,800H140A76,76 0 0 1 64,724V300A76,76 0 0 1 140,224Z"/>
+    <path
+        android:fillColor="#ffffff"
+        android:pathData="M464.8,310L643.9,394A42,42 0 0 1 643.9,470L464.8,554A42,42 0 0 1 405,515.9L405,348.1A42,42 0 0 1 464.8,310Z"/>
+    <path
+        android:fillColor="#ffffff"
+        android:pathData="M184,660H840A32,32 0 0 1 872,692A32,32 0 0 1 840,724H184A32,32 0 0 1 152,692A32,32 0 0 1 184,660Z"/>
+    <path
+        android:fillColor="#ffffff"
+        android:pathData="M512,692m-52,0a52,52 0,1 0,104,0a52,52 0,1 0,-104,0"/>
+</vector>

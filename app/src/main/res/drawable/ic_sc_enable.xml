@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:height="30px"
+    android:width="30px"
+    android:viewportWidth="1024"
+    android:viewportHeight="1024">
+    <!-- 外框：与弹幕开关 ic_dm_enable 同款圆角矩形 -->
+    <path
+        android:fillColor="#ffffff"
+        android:pathData="M741.8,205H281c-71.7,0 -128,56.3 -128,128v358.4c0,71.7 56.3,128 128,128h460.8c71.7,0 128,-56.3 128,-128V333C869.8,261.3 813.5,205 741.8,205L741.8,205zM818.6,691.4c0,43.5 -33.3,76.8 -76.8,76.8H281c-43.5,0 -76.8,-33.3 -76.8,-76.8V333c0,-43.5 33.3,-76.8 76.8,-76.8h460.8c43.5,0 76.8,33.3 76.8,76.8V691.4zM818.6,691.4"/>
+    <!-- ¥：移植旧气泡版字形比例（窄陡Y头/长竖尾/双横），整体居中于框 -->
+    <path
+        android:strokeColor="#ffffff"
+        android:strokeWidth="72"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000"
+        android:pathData="M398,300 L512,456 L626,300 M512,456 L512,668 M424,508 h176 M424,590 h176"/>
+</vector>

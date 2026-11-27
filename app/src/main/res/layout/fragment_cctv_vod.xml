@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/backgroundColor">
+
+    <LinearLayout
+        android:id="@+id/layout_title_row"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/px35"
+        android:layout_marginTop="@dimen/px40"
+        android:layout_marginEnd="@dimen/px40"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/text_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/cctv_vod"
+            android:textColor="?android:attr/textColorPrimary"
+            android:textSize="@dimen/px40"
+            android:textStyle="bold" />
+
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/button_search"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/px20"
+            android:background="@drawable/bg_owner_dialog_outline_button"
+            android:clickable="true"
+            android:focusable="true"
+            android:paddingStart="@dimen/px25"
+            android:paddingTop="@dimen/px8"
+            android:paddingEnd="@dimen/px25"
+            android:paddingBottom="@dimen/px8"
+            android:text="@string/cctv_vod_search"
+            android:textColor="@color/textColor"
+            android:textSize="@dimen/px26" />
+    </LinearLayout>
+
+    <!-- 控制区面板：分类 + 筛选。深色描边圆角块，与下方内容区分开 -->
+    <LinearLayout
+        android:id="@+id/layout_control_panel"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/px25"
+        android:layout_marginTop="@dimen/px25"
+        android:layout_marginEnd="@dimen/px25"
+        android:background="@drawable/bg_cctv_vod_panel"
+        android:orientation="vertical"
+        android:paddingStart="@dimen/px10"
+        android:paddingTop="@dimen/px8"
+        android:paddingEnd="@dimen/px10"
+        android:paddingBottom="@dimen/px8"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/layout_title_row">
+
+        <LinearLayout
+            android:id="@+id/layout_categories"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:clipToPadding="false"
+            android:orientation="horizontal" />
+
+        <LinearLayout
+            android:id="@+id/layout_filters"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:clipToPadding="false"
+            android:orientation="horizontal" />
+    </LinearLayout>
+
+    <!-- 片库 / 收藏 数据源切换：与首页「推荐/热门」同款 TabLayout（紫下划线 + 粗体字） -->
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/tab_source"
+        android:layout_width="wrap_content"
+        android:layout_height="@dimen/px80"
+        android:layout_marginStart="@dimen/px30"
+        android:layout_marginTop="@dimen/px10"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/layout_control_panel"
+        app:tabBackground="@android:color/transparent"
+        app:tabIndicator="@drawable/underline"
+        app:tabIndicatorColor="?attr/colorAccent"
+        app:tabIndicatorFullWidth="false"
+        app:tabIndicatorHeight="@dimen/px10"
+        app:tabMode="scrollable"
+        app:tabPaddingEnd="@dimen/px20"
+        app:tabPaddingStart="@dimen/px20"
+        app:tabRippleColor="@android:color/transparent"
+        app:tabSelectedTextColor="?android:attr/textColorPrimary"
+        app:tabTextAppearance="@style/TopPageTabText" />
+
+    <!-- 数据源 tab 与卡片列表的分隔线，避免 tab 指示条紧贴卡片 -->
+    <View
+        android:id="@+id/view_source_divider"
+        android:layout_width="0dp"
+        android:layout_height="@dimen/px2"
+        android:layout_marginStart="@dimen/px35"
+        android:layout_marginTop="@dimen/px2"
+        android:layout_marginEnd="@dimen/px35"
+        android:background="?attr/dividerColor"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tab_source" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recycler_view"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:clipToPadding="false"
+        android:descendantFocusability="afterDescendants"
+        android:focusable="false"
+        android:paddingStart="@dimen/px10"
+        android:paddingEnd="@dimen/px30"
+        android:paddingBottom="@dimen/px50"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/view_source_divider" />
+
+    <androidx.appcompat.widget.AppCompatTextView
+        android:id="@+id/text_empty"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/cctv_vod_empty"
+        android:textColor="?android:attr/textColorSecondary"
+        android:textSize="@dimen/px28"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="@id/recycler_view"
+        app:layout_constraintEnd_toEndOf="@id/recycler_view"
+        app:layout_constraintStart_toStartOf="@id/recycler_view"
+        app:layout_constraintTop_toTopOf="@id/recycler_view" />
+
+    <ProgressBar
+        android:id="@+id/loading_progress"
+        android:layout_width="@dimen/px80"
+        android:layout_height="@dimen/px80"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="@id/recycler_view"
+        app:layout_constraintEnd_toEndOf="@id/recycler_view"
+        app:layout_constraintStart_toStartOf="@id/recycler_view"
+        app:layout_constraintTop_toTopOf="@id/recycler_view" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

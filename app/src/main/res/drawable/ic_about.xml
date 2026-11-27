@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:height="150px"
+    android:width="150px"
+    android:viewportWidth="1024"
+    android:viewportHeight="1024">
+    <!-- 关于：圆环 + i -->
+    <path
+        android:fillColor="#ffffff"
+        android:pathData="M512,64C264.6,64 64,264.6 64,512s200.6,448 448,448 448,-200.6 448,-448S759.4,64 512,64zM512,928c-229.8,0 -416,-186.2 -416,-416S282.2,96 512,96s416,186.2 416,416 -186.2,416 -416,416z"/>
+    <path
+        android:fillColor="#ffffff"
+        android:pathData="M512,240m-48,0a48,48 0,1 0,96 0,48 48 0 1,0 -96,0z"/>
+    <path
+        android:fillColor="#ffffff"
+        android:pathData="M512,416c17.7,0 32,14.3 32,32v224c0,17.7 -14.3,32 -32,32s-32,-14.3 -32,-32V448c0,-17.7 14.3,-32 32,-32z"/>
+</vector>

@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ===== dialog: action dialogs (PlayerActionDialog / VideoCardMenuDialog / OwnerDetailDialog / UserInfoDialog) ===== -->
+    <string name="dialog_action_failed">Action failed</string>
+    <string name="dialog_action_failed_retry_later">Action failed, try again later</string>
+    <string name="dialog_coin_success">Coin sent</string>
+    <string name="dialog_favorite_folder_not_loaded">Favorite folders not loaded yet</string>
+    <string name="dialog_no_available_favorite_folder">No favorite folders available</string>
+    <string name="dialog_load_favorite_folder_failed">Failed to load favorite folders</string>
+    <string name="dialog_favorited_to_format">Added to %1$s</string>
+    <string name="dialog_unfavorited_from_format">Removed from %1$s</string>
+    <string name="dialog_unfavorite">Unfavorite</string>
+    <string name="dialog_triple_success_risk_marked">Triple combo sent, but your account is risk-control flagged and later actions may be limited</string>
+    <string name="dialog_risk_control_verify_hint">Account under risk control. Complete verification in the official bilibili app or website, then try again.</string>
+    <string name="dialog_credential_error_retry_later">Login credential error, try again later</string>
+    <string name="dialog_up_info_not_loaded">Uploader info not loaded yet</string>
+    <string name="dialog_load_failed">Load failed</string>
+    <string name="dialog_follow_success">Followed</string>
+    <string name="dialog_unfollowed">Unfollowed</string>
+    <string name="dialog_normal_member">Regular member</string>
+
+    <!-- ===== adapter: list item bound texts ===== -->
+    <string name="adapter_watched_complete">Watched</string>
+    <string name="adapter_portrait">Portrait</string>
+    <string name="adapter_favorited_at_format">Favorited on %1$s</string>
+    <string name="adapter_default_sign">Nothing here yet</string>
+    <string name="adapter_published_at_format">Published: %1$s</string>
+    <string name="adapter_stat_view_format">%1$s views</string>
+    <string name="adapter_stat_danmaku_format">%1$s danmaku</string>
+    <string name="adapter_stat_like_format">%1$s likes</string>
+    <string name="adapter_stat_coin_format">%1$s coins</string>
+    <string name="adapter_stat_favorite_format">%1$s favorites</string>
+    <string name="adapter_description_format">Description: %1$s</string>
+    <string name="adapter_triple_hint">Long-press Like for a triple combo</string>
+    <string name="adapter_fans_count_format">%1$s followers</string>
+    <string name="adapter_sort_ascending">↑ Ascending</string>
+    <string name="adapter_sort_descending">↓ Descending</string>
+    <string name="adapter_current_selection">Current</string>
+    <string name="adapter_rating_format">Rating %1$s</string>
+    <string name="adapter_play_count_format">%1$s views</string>
+    <string name="adapter_danmaku_count_format">%1$s danmaku</string>
+    <string name="adapter_episode_unit_anime">EP</string>
+    <string name="adapter_episode_unit_drama">EP</string>
+    <string name="adapter_series_finished_total_format">Completed, %1$d%2$s total</string>
+    <string name="adapter_series_ongoing_format">Ongoing, %1$s</string>
+    <string name="adapter_series_ongoing_updated_format">Ongoing, updated to %1$d%2$s</string>
+    <string name="adapter_series_updated_format">Updated to %1$d%2$s</string>
+    <string name="adapter_related_series">Related series</string>
+    <string name="adapter_related_series_format">%1$s · Related series</string>
+
+    <!-- ===== activity: player / live / verification page hints ===== -->
+    <string name="activity_risk_control_settings_hint">Account under risk control. Complete verification in Settings.</string>
+    <string name="activity_preview_ended_hint">Preview ended. Sign in or Premium required for the full episode.</string>
+    <string name="activity_preview_start_hint">This is a preview (about 1 minute). Sign in or Premium required for the full episode.</string>
+    <string name="activity_teen_mode_blocked_video">Teen mode blocked this video</string>
+    <string name="activity_teen_rest_banner">Please turn off the TV and rest</string>
+    <string name="activity_teen_rest_needed_format">Please turn off the TV and rest for %1$d more minutes</string>
+    <string name="activity_repeat_one">Repeat one</string>
+    <string name="activity_repeat_all">Play in order</string>
+    <string name="activity_exit_player_hint">Press back again to exit the player</string>
+    <string name="activity_exit_live_hint">Press back again to exit live</string>
+    <string name="activity_sponsor_skipped_format">Skipped: %1$s</string>
+    <string name="activity_web_load_failed_format">Page load failed (%1$d)</string>
+    <string name="activity_web_ssl_error">SSL certificate error</string>
+    <string name="activity_player_load_timeout">Player load timed out</string>
+    <string name="activity_player_buffer_timeout">Player buffer timed out</string>
+    <string name="activity_quality_downgraded_format">Downgraded to %1$s</string>
+    <string name="activity_cctv_script_update_failed">Failed to update CCTV player script</string>
+    <string name="activity_channel_load_failed">Failed to load channels</string>
+    <string name="activity_channel_loading">Loading channels...</string>
+    <string name="activity_no_cctv_channels">No CCTV channels available</string>
+    <string name="activity_no_channels">No channels available</string>
+    <string name="activity_no_quality_options">No quality options for this channel</string>
+    <string name="activity_remote_switch_channel_tip">Use the remote D-pad to switch channels quickly</string>
+    <string name="activity_initializing">Initializing…</string>
+    <string name="cctv_stage_resolving">Resolving channel…</string>
+    <string name="cctv_stage_connecting">Connecting…</string>
+    <string name="cctv_stage_buffering">Buffering…</string>
+    <string name="activity_loading_web">Loading web page…</string>
+    <string name="activity_loading_video">Loading video…</string>
+    <string name="activity_verifying_request">Requesting verification…</string>
+    <string name="activity_verify_waiting">Complete the verification…</string>
+    <string name="activity_verify_success_submitting">Verified, submitting…</string>
+    <string name="activity_geetest_title">CAPTCHA</string>
+    <string name="activity_geetest_start">Start verification</string>
+    <string name="activity_geetest_load_failed">Failed to load CAPTCHA script, check your network</string>
+
+    <!-- ===== model: quality / audio track / category / order display names ===== -->
+    <string name="quality_8k">8K Ultra HD</string>
+    <string name="quality_hdr">HDR</string>
+    <string name="quality_4k">4K Ultra HD</string>
+    <string name="quality_1080p_60">1080P 60fps</string>
+    <string name="quality_1080p_plus">1080P High bitrate</string>
+    <string name="quality_1080p">1080P HD</string>
+    <string name="quality_720p_60">720P 60fps</string>
+    <string name="quality_720p">720P HD</string>
+    <string name="quality_480p">480P SD</string>
+    <string name="quality_360p">360P</string>
+    <string name="quality_240p">240P</string>
+    <string name="quality_unknown_format">Quality %1$d</string>
+    <string name="audio_track_unknown_format">Audio track %1$d</string>
+    <string name="model_series_china_anime">Chinese Anime</string>
+    <string name="model_series_variety">Variety shows</string>
+    <string name="model_search_order_total_rank">Overall</string>
+    <string name="model_search_order_click">Most viewed</string>
+    <string name="space_order_most_played">Most played</string>
+    <string name="space_sort_oldest_first">Oldest first</string>
+    <string name="model_search_order_pub_date">Newest first</string>
+    <string name="model_search_order_dm">Most danmaku</string>
+    <string name="model_search_order_most_collection">Most favorited</string>
+
+    <!-- ===== core: common infra texts (time / numbers / badges / teen mode) ===== -->
+    <string name="core_badge_charge_exclusive">Supporters only</string>
+    <string name="core_badge_interaction">Interactive</string>
+    <string name="core_time_just_now">Just now</string>
+    <string name="core_time_minutes_ago_format">%1$d min ago</string>
+    <string name="core_time_hours_ago_format">%1$d hr ago</string>
+    <string name="core_time_days_ago_format">%1$d days ago</string>
+    <string name="core_time_today_time_format">Today, %1$s</string>
+    <string name="core_time_yesterday_time_format">Yesterday, %1$s</string>
+    <string name="core_time_day_before_time_format">2 days ago, %1$s</string>
+    <string name="core_count_wan_format">%1$s0K</string>
+    <string name="core_count_yi_format">%1$s00M</string>
+    <string name="core_teen_rest_needed_format">Please turn off the TV and rest for %1$d more minutes</string>
+
+    <!-- ===== x5: X5 core download/install progress ===== -->
+    <string name="x5_status_processing">Processing...</string>
+    <string name="x5_server_error_format">Server error: %1$d</string>
+    <string name="x5_downloading_percent_format">Downloading %1$d%%</string>
+    <string name="x5_md5_check_failed">MD5 check failed</string>
+    <string name="x5_download_failed_format">Download failed: %1$s</string>
+    <string name="x5_installing">Installing...</string>
+    <string name="x5_installed_restart_countdown">✓ X5 installed! Restarting in 3s...</string>
+    <string name="x5_install_failed_code_format">Install failed (code %1$d), click to retry</string>
+    <string name="x5_install_unsupported">canLoadX5 is still false after install; the device may be unsupported</string>
+    <string name="x5_install_error_format">Install error: %1$s</string>
+
+    <!-- ===== layout placeholders / titles ===== -->
+    <string name="cell_title_placeholder">Title title title title title title title title title</string>
+    <string name="cell_fans_placeholder">0 followers</string>
+    <string name="cell_user_stat_placeholder">0 followers · 0 videos</string>
+    <string name="setting_tv_live">Live TV</string>
+</resources>

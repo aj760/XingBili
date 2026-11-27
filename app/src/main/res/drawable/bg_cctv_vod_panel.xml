@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 片库页控制区面板（分类 + 筛选）：深色底 + 描边圆角，与设置页组框同款语言，
+     把控制区从页面底色上分离出来，避免标题/筛选/列表混成一片 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="?attr/subBackgroundColor" />
+    <stroke android:width="@dimen/px2" android:color="?attr/dividerColor" />
+    <corners android:radius="@dimen/px15" />
+</shape>

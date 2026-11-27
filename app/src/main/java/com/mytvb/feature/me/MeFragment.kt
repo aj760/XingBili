@@ -1,0 +1,398 @@
+package com.mytvb.feature.me
+
+import android.graphics.Rect
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.viewpager2.widget.ViewPager2
+import com.google.android.material.tabs.TabLayout
+import com.google.android.material.tabs.TabLayoutMediator
+import com.mytvb.R
+import com.mytvb.databinding.FragmentMeBinding
+import com.mytvb.event.AppEventHub
+import com.mytvb.network.session.SessionStateRepository
+import com.mytvb.core.ui.base.BaseFragment
+import com.mytvb.ui.fragment.main.MainNavigationViewModel
+import com.mytvb.ui.fragment.main.MainTabFocusTarget
+import com.mytvb.feature.settings.SignInFragment
+import com.mytvb.core.common.settings.AppSettingsDataStore
+import com.mytvb.core.ui.focus.EdgeTabSwitch
+import com.mytvb.core.ui.tab.enableTouchNavigation
+import com.mytvb.core.ui.tab.focusNearestTabTo
+import com.mytvb.core.ui.tab.focusSelectedTab
+import com.mytvb.core.ui.base.OnBackPressedHandler
+import com.mytvb.core.ui.tab.disableAdjacentPagePrefetch
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
+import org.koin.android.ext.android.inject
+import org.koin.androidx.viewmodel.ext.android.viewModel
+
+class MeFragment : BaseFragment<FragmentMeBinding>(), MainTabFocusTarget, OnBackPressedHandler,
+    com.mytvb.core.ui.tab.SecondaryTabHost {
+    companion object {
+        private const val USER_INFO_CACHE_TTL_MS = 10 * 60 * 1000L
+
+        fun newInstance(): MeFragment = MeFragment()
+    }
+
+    private val appSettings: AppSettingsDataStore by inject()
+    private val appEventHub: AppEventHub by inject()
+    private val mainNavigationViewModel: MainNavigationViewModel by activityViewModels()
+    private val sessionGateway: SessionStateRepository by inject()
+    private val viewModel: MeViewModel by viewModel()
+    private lateinit var tabLayout: TabLayout
+    private lateinit var viewPager: ViewPager2
+    private lateinit var adapter: MeFragmentAdapter
+    private var pageChangeCallback: ViewPager2.OnPageChangeCallback? = null
+    private var tabSelectedListener: TabLayout.OnTabSelectedListener? = null
+    private var pendingRefreshAfterLogin = false
+    private var wasLoggedInOnPause = false
+
+    override fun getViewBinding(
+        inflater: LayoutInflater,
+        container: ViewGroup?
+    ): FragmentMeBinding {
+        return FragmentMeBinding.inflate(inflater, container, false)
+    }
+
+    override fun initView() {
+        tabLayout = binding.tabLayout
+        viewPager = binding.viewPager
+        binding.rightStateImage.setOnClickListener {
+            if (!viewModel.isLoggedIn.value) {
+                openInHostContainer(SignInFragment.newInstance())
+            }
+        }
+
+        adapter = MeFragmentAdapter(
+            childFragmentManager,
+            lifecycle
+        )
+        viewPager.adapter = adapter
+        // 保留全部 3 个 tab 页（历史/收藏/稍后观看）：切 tab 不销毁 fragment，
+        // 滚动进度/焦点/已加载数据切回来原样保留（同首页，见 disableAdjacentPagePrefetch 注释）
+        viewPager.disableAdjacentPagePrefetch(retainAllPages = true)
+        TabLayoutMediator(tabLayout, viewPager) { tab, position ->
+            tab.text = adapter.getPageTitle(position)?.let(::getString).orEmpty()
+        }.attach()
+        tabLayout.enableTouchNavigation(
+            viewPager = viewPager,
+            onNavigateDown = ::focusCurrentPageNearestContent,
+            onNavigateLeft = ::focusLeftFunctionArea,
+            onTabReselected = {
+                // 重选当前 tab = 回顶聚焦第一卡（与首页一致）；刷新只留 MENU 键。
+                // 未登录时 tab 栏不可见不会触发，无需登录判断。
+                val page = getCurrentTabPage()
+                if (page != null && !page.scrollToTopAndFocus()) {
+                    page.scrollToTop()
+                }
+            }
+        )
+        tabSelectedListener = object : TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: TabLayout.Tab) = Unit
+
+            override fun onTabUnselected(tab: TabLayout.Tab) = Unit
+
+            override fun onTabReselected(tab: TabLayout.Tab) {
+            }
+        }.also { tabLayout.addOnTabSelectedListener(it) }
+
+        pageChangeCallback = object : ViewPager2.OnPageChangeCallback() {
+            override fun onPageSelected(position: Int) {
+                notifyCurrentTabWithRetry({ page -> page.onTabSelected() })
+            }
+        }.also { viewPager.registerOnPageChangeCallback(it) }
+
+        viewPager.currentItem = getDefaultTabIndex()
+        viewPager.post { notifyCurrentTab { it.onTabSelected() } }
+    }
+
+    override fun onPause() {
+        wasLoggedInOnPause = sessionGateway.isLoggedIn()
+        super.onPause()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (sessionGateway.isLoggedIn() && !wasLoggedInOnPause) {
+            pendingRefreshAfterLogin = true
+            viewModel.loadUserInfo()
+        }
+    }
+
+    override fun initData() {
+        viewModel.loadUserInfo()
+        renderLoginState(viewModel.isLoggedIn.value)
+    }
+
+    override fun initObserver() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.userInfo.collectLatest { userInfo ->
+                    userInfo?.let {
+                        // Avatar badge is managed by TabBarView in MainActivity
+                    }
+                }
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.syncWithGateway()
+                viewModel.isLoggedIn.collectLatest { isLoggedIn ->
+                    renderLoginState(isLoggedIn)
+                    if (!isLoggedIn) {
+                        // Avatar state is managed by TabBarView in MainActivity
+                    }
+                }
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                mainNavigationViewModel.events.collectLatest { event ->
+                    // MainTabSelected(ME=7) 是「正在切到本页」的信号：事件经 Main.immediate
+                    // 同步分发，先于 showFragment 的 show 事务生效，此刻 isHidden 仍是
+                    // true——本页自己的选中事件若被下面的 isHidden 守卫吞掉，从其它主
+                    // tab 切回时 SELECT_TAB4 永远送不到子 tab（历史页表现为不刷新）。
+                    // （历史遗留①：CCTV影视 tab 插入后本页索引从 5 变 6，此处曾长期
+                    // 误判 5。②：红果短剧 tab 插入后从 6 变 7，同步更新。新增侧栏 tab
+                    // 时必须同步 MainActivity 常量与此处判断。）
+                    if (event is MainNavigationViewModel.Event.MainTabSelected) {
+                        if (event.index == 7) {
+                            if (viewModel.shouldRefresh(USER_INFO_CACHE_TTL_MS)) {
+                                viewModel.loadUserInfo()
+                            }
+                            dispatchHostEvent(MeTabPage.HostEvent.SELECT_TAB4)
+                        }
+                        return@collectLatest
+                    }
+                    if (isHidden) {
+                        return@collectLatest
+                    }
+                    when (event) {
+                        is MainNavigationViewModel.Event.MainTabReselected ->
+                            if (event.index == 7) {
+                                if (viewModel.shouldRefresh(USER_INFO_CACHE_TTL_MS)) {
+                                    viewModel.loadUserInfo()
+                                }
+                                dispatchHostEvent(MeTabPage.HostEvent.CLICK_TAB4) {
+                                    getCurrentTabPage()?.refresh()
+                                }
+                            }
+
+                        MainNavigationViewModel.Event.BackPressed -> {
+                            dispatchHostEvent(MeTabPage.HostEvent.BACK_PRESSED) {
+                                Unit
+                            }
+                        }
+
+                        // MenuPressed（菜单键刷新）不再经宿主派发：子页
+                        // （MeListFragment/FavoriteFragment）已各自订阅
+                        // MainNavigationViewModel.events 直接刷新，宿主转发会双发。
+
+                        else -> Unit
+                    }
+                }
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                    appEventHub.events.collectLatest { event ->
+                    if (event == AppEventHub.Event.UserSessionChanged) {
+                        pendingRefreshAfterLogin = true
+                        viewModel.loadUserInfo()
+                        adapter.getFragments().forEach { fragment ->
+                            if (fragment.view != null) {
+                                val page = fragment as? MeTabPage ?: return@forEach
+                                if (page.shouldDeferSessionRefresh()) {
+                                    // 静默刷新进行中（如播放器返回），同接口数据在途，跳过回顶重排
+                                    return@forEach
+                                }
+                                page.refresh()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun getDefaultTabIndex(): Int {
+        val startPage = appSettings.getCachedInt("defaultStartPage", 1)
+        return (startPage - 4).coerceIn(0, adapter.itemCount - 1)
+    }
+
+    fun scrollToTop() {
+        if (!viewModel.isLoggedIn.value) {
+            return
+        }
+        getCurrentTabPage()?.scrollToTop()
+    }
+
+    fun focusCurrentTab(anchorView: View? = view?.findFocus() ?: activity?.currentFocus): Boolean {
+        return binding.tabLayout.focusNearestTabTo(anchorView)
+    }
+
+    /**
+     * BACK 三层分发（与 HomeFragment 一致）：
+     * 内容区 → 当前选中的二级 tab；tab 栏 → 主边栏当前主 tab 按钮；
+     * 未登录时 tab/viewPager 均 GONE（hasFocus 恒 false），自然放行给退出流程。
+     */
+    override fun onBackPressed(): Boolean {
+        if (tabLayout.hasFocus()) {
+            return (activity as? com.mytvb.ui.activity.MainActivity)?.focusSidebarCurrentTab() == true
+        }
+        if (viewPager.hasFocus()) {
+            return tabLayout.focusSelectedTab()
+        }
+        return false
+    }
+
+    /** 首个二级 tab 上按 LEFT：聚焦左侧主边栏（与首页一致）。 */
+    private fun focusLeftFunctionArea(): Boolean {
+        return (activity as? com.mytvb.ui.activity.MainActivity)?.focusLeftFunctionArea() == true
+    }
+
+    /** 列表顶行 UP 的落点：聚焦当前选中的二级 tab（不切页）。 */
+    override fun focusSelectedTabFromContent(): Boolean {
+        return tabLayout.focusSelectedTab()
+    }
+
+    /** 内容网格左右边缘切二级 tab（与 HomeFragment 一致）；首/末 tab 越界方向保持原有行为。 */
+    override fun switchAdjacentTabFromContentEdge(delta: Int): Boolean {
+        // 设置「卡片边缘切换标签」关闭：只关「切 tab」——左边缘环绕回主边栏
+        // 当前主 tab 对应按钮；右边缘吞键停原地（对齐 blbl 右边缘无外流）
+        if (!EdgeTabSwitch.enabled(appSettings)) {
+            if (delta < 0) {
+                return (activity as? com.mytvb.ui.activity.MainActivity)?.focusSidebarCurrentTab() == true
+            }
+            return true
+        }
+        val target = viewPager.currentItem + delta
+        if (target < 0) {
+            return (activity as? com.mytvb.ui.activity.MainActivity)?.focusLeftFunctionArea() == true
+        }
+        if (target >= adapter.itemCount) {
+            return true
+        }
+        viewPager.setCurrentItem(target, true)
+        // 切页后旧页焦点随页面滑出，需把焦点交接到新页；布局未稳时补一次延迟重试
+        viewPager.post {
+            if (isAdded && !focusCurrentPageNearestContent()) {
+                viewPager.postDelayed({
+                    if (isAdded) {
+                        focusCurrentPageNearestContent()
+                    }
+                }, 120L)
+            }
+        }
+        return true
+    }
+
+    /** 顶部 tab 栏按 DOWN：就近聚焦可见第一项（列表位置不动，半截轻滚补齐）；回顶只由重选 tab 承担。 */
+    private fun focusCurrentPageNearestContent(): Boolean {
+        val page = getCurrentTabPage() ?: return false
+        if (page.focusNearestVisibleContent()) {
+            return true
+        }
+        return focusCurrentPagePrimaryContent()
+    }
+
+    override fun focusEntryFromMainTab(): Boolean {
+        return focusEntryFromMainTab(anchorView = null, preferSpatialEntry = false)
+    }
+
+    override fun focusEntryFromMainTab(anchorView: View?, preferSpatialEntry: Boolean): Boolean {
+        if (!viewModel.isLoggedIn.value) {
+            return false
+        }
+        if (preferSpatialEntry && anchorView != null && isVerticallyAlignedWith(anchorView, tabLayout)) {
+            if (focusCurrentTab(anchorView)) return true
+        }
+        val handled = focusCurrentPagePrimaryContent(anchorView, preferSpatialEntry) ||
+            focusCurrentTab(anchorView)
+        return handled
+    }
+
+    private fun focusCurrentPagePrimaryContent(anchorView: View? = null, preferSpatialEntry: Boolean = false): Boolean {
+        return getCurrentTabPage()?.focusPrimaryContent(anchorView, preferSpatialEntry) == true
+    }
+
+    private fun getCurrentTabPage(): MeTabPage? {
+        return adapter.getFragment(viewPager.currentItem) as? MeTabPage
+    }
+
+    private fun notifyCurrentTab(action: (MeTabPage) -> Unit) {
+        getCurrentTabPage()?.let(action)
+    }
+
+    private fun notifyCurrentTabWithRetry(action: (MeTabPage) -> Unit, retries: Int = 5) {
+        val page = getCurrentTabPage()
+        if (page != null) {
+            action(page)
+        } else if (retries > 0) {
+            viewPager.post { notifyCurrentTabWithRetry(action, retries - 1) }
+        }
+    }
+
+    private fun dispatchHostEvent(event: MeTabPage.HostEvent, fallback: (() -> Unit)? = null) {
+        if (!viewModel.isLoggedIn.value) {
+            return
+        }
+        if (getCurrentTabPage()?.onHostEvent(event) == true) {
+            return
+        }
+        fallback?.invoke()
+    }
+
+    private fun renderLoginState(isLoggedIn: Boolean) {
+        if (!isAdded || view == null) {
+            return
+        }
+        binding.rightStateContainer.visibility = if (isLoggedIn) View.GONE else View.VISIBLE
+        binding.tabLayout.visibility = if (isLoggedIn) View.VISIBLE else View.GONE
+        binding.viewPager.visibility = if (isLoggedIn) View.VISIBLE else View.GONE
+        binding.rightStateText.text = getString(R.string.need_sign_in)
+
+        if (isLoggedIn && pendingRefreshAfterLogin) {
+            pendingRefreshAfterLogin = false
+            binding.viewPager.post {
+                if (!isAdded || view == null) return@post
+                adapter.getFragments().forEach { fragment ->
+                    if (fragment.view != null) {
+                        val page = fragment as? MeTabPage ?: return@forEach
+                        if (page.shouldDeferSessionRefresh()) {
+                            // 静默刷新进行中（如播放器返回），同接口数据在途，跳过回顶重排
+                            return@forEach
+                        }
+                        page.refresh()
+                    }
+                }
+            }
+        }
+    }
+
+    override fun onDestroyView() {
+        pageChangeCallback?.let(viewPager::unregisterOnPageChangeCallback)
+        pageChangeCallback = null
+        tabSelectedListener?.let { tabLayout.removeOnTabSelectedListener(it) }
+        tabSelectedListener = null
+        binding.viewPager.adapter = null
+        super.onDestroyView()
+    }
+
+    private fun isVerticallyAlignedWith(anchor: View, target: View): Boolean {
+        val anchorRect = Rect()
+        val targetRect = Rect()
+        if (!anchor.getGlobalVisibleRect(anchorRect)) return false
+        if (!target.getGlobalVisibleRect(targetRect)) return false
+        return maxOf(anchorRect.top, targetRect.top) < minOf(anchorRect.bottom, targetRect.bottom)
+    }
+}

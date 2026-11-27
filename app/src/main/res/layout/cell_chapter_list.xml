@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 章节弹窗行（官方样式）：左大缩略图（view_points.img）+ 标题 + 时间范围，
+     当前章标题粉色 + playing 角标 -->
+<androidx.appcompat.widget.LinearLayoutCompat xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:id="@+id/click_view"
+    android:background="@drawable/cell_background"
+    android:paddingTop="@dimen/px15"
+    android:paddingBottom="@dimen/px15"
+    android:focusable="true"
+    android:clickable="true"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+    <FrameLayout
+        android:layout_width="@dimen/px280"
+        android:layout_height="@dimen/px158"
+        android:layout_marginStart="@dimen/px35"
+        android:background="@drawable/timeline_thumb_preview_bg"
+        android:clipToOutline="true">
+        <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/image_chapter_thumb"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"/>
+    </FrameLayout>
+    <androidx.appcompat.widget.LinearLayoutCompat
+        android:orientation="vertical"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:paddingStart="@dimen/px30"
+        android:paddingEnd="@dimen/px40">
+        <androidx.appcompat.widget.LinearLayoutCompat
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+            <androidx.appcompat.widget.AppCompatImageView
+                android:id="@+id/icon_playing"
+                android:layout_width="@dimen/px32"
+                android:layout_height="@dimen/px32"
+                android:layout_marginEnd="@dimen/px12"
+                android:visibility="gone"/>
+            <androidx.appcompat.widget.AppCompatTextView
+                android:textSize="@dimen/px32"
+                android:textColor="@color/textColor"
+                android:ellipsize="marquee"
+                android:id="@+id/text_title"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:singleLine="true"
+                android:marqueeRepeatLimit="marquee_forever"/>
+        </androidx.appcompat.widget.LinearLayoutCompat>
+        <androidx.appcompat.widget.AppCompatTextView
+            android:textSize="@dimen/px26"
+            android:textColor="@color/textColor"
+            android:id="@+id/text_range"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/px8"
+            android:singleLine="true"
+            android:ellipsize="end"/>
+    </androidx.appcompat.widget.LinearLayoutCompat>
+</androidx.appcompat.widget.LinearLayoutCompat>

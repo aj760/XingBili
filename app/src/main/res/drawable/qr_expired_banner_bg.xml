@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 过期/失败提示胶囊：半透明深底保证白字叠在二维码上可读，样式不随焦点变化 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#CC000000" />
+    <corners android:radius="@dimen/px20" />
+</shape>

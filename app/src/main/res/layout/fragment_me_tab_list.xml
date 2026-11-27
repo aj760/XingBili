@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <!-- 历史页「继续观看」横条：仅 TYPE_HISTORY 且接口返回推荐时显示 -->
+        <LinearLayout
+            android:id="@+id/continuation_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingStart="@dimen/px10"
+                android:paddingTop="@dimen/px14"
+                android:paddingBottom="@dimen/px8"
+                android:text="@string/history_continuation_title"
+                android:textColor="@color/textColor"
+                android:textSize="@dimen/px26" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recycler_continuation"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:clipToPadding="false"
+                android:paddingStart="@dimen/px10"
+                android:paddingEnd="@dimen/px10" />
+        </LinearLayout>
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerView"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:clipToPadding="false"
+            android:descendantFocusability="afterDescendants"
+            android:paddingStart="@dimen/px10"
+            android:paddingTop="@dimen/px10"
+            android:paddingEnd="@dimen/px10"
+            android:paddingBottom="@dimen/px50" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/empty_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/tv_empty"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="@string/empty"
+            android:textColor="?android:attr/textColorSecondary"
+            android:textSize="@dimen/px30" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btn_retry"
+            android:layout_width="wrap_content"
+            android:layout_height="@dimen/px90"
+            android:layout_marginTop="@dimen/px30"
+            android:background="@drawable/button_common"
+            android:paddingStart="@dimen/px50"
+            android:paddingEnd="@dimen/px50"
+            android:text="@string/retry"
+            android:textSize="@dimen/px30"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="@dimen/px120"
+        android:layout_height="@dimen/px120"
+        android:layout_gravity="center"
+        android:visibility="gone" />
+</FrameLayout>

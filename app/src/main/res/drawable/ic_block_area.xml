@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24px"
+    android:height="24px"
+    android:viewportWidth="16"
+    android:viewportHeight="16">
+
+    <!-- 底板：分区四方格（白色填充），格子块面大、细缝加宽防低分屏粘连 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M4.3,3.5 h2.4 a0.8,0.8 0 0 1 0.8,0.8 v2.4 a0.8,0.8 0 0 1 -0.8,0.8 h-2.4 a0.8,0.8 0 0 1 -0.8,-0.8 v-2.4 a0.8,0.8 0 0 1 0.8,-0.8 Z M9.3,3.5 h2.4 a0.8,0.8 0 0 1 0.8,0.8 v2.4 a0.8,0.8 0 0 1 -0.8,0.8 h-2.4 a0.8,0.8 0 0 1 -0.8,-0.8 v-2.4 a0.8,0.8 0 0 1 0.8,-0.8 Z M4.3,8.5 h2.4 a0.8,0.8 0 0 1 0.8,0.8 v2.4 a0.8,0.8 0 0 1 -0.8,0.8 h-2.4 a0.8,0.8 0 0 1 -0.8,-0.8 v-2.4 a0.8,0.8 0 0 1 0.8,-0.8 Z M9.3,8.5 h2.4 a0.8,0.8 0 0 1 0.8,0.8 v2.4 a0.8,0.8 0 0 1 -0.8,0.8 h-2.4 a0.8,0.8 0 0 1 -0.8,-0.8 v-2.4 a0.8,0.8 0 0 1 0.8,-0.8 Z" />
+
+    <!-- 禁止标志：红色圆环 + 斜线，与 ic_block_video/ic_block_up 同款 -->
+    <path
+        android:strokeColor="#FF3B30"
+        android:strokeWidth="1.2"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="
+            M11.5,9.5 A2.5,2.5 0,1,0 11.5,14.5 A2.5,2.5 0,1,0 11.5,9.5 Z
+            M10,10.5 L13,13.5" />
+
+</vector>

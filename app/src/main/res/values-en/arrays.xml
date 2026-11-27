@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="screen_ratios">
+        <item>Auto</item>
+        <item>Fit width</item>
+        <item>Fit height</item>
+        <item>Stretch</item>
+        <item>Zoom</item>
+    </string-array>
+
+    <!-- Number scale: true = K/M/B (thousand-based, English); overrides the wan/yi default -->
+    <bool name="count_scale_thousand">true</bool>
+</resources>

@@ -1,0 +1,346 @@
+package com.mytvb.feature.home
+
+import android.graphics.Rect
+import android.os.Bundle
+import android.os.SystemClock
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import androidx.fragment.app.activityViewModels
+import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import com.google.android.material.tabs.TabLayout
+import com.google.android.material.tabs.TabLayoutMediator
+import androidx.viewpager2.widget.ViewPager2
+import com.mytvb.databinding.FragmentHomeBinding
+import com.mytvb.R
+import com.mytvb.event.AppEventHub
+import com.mytvb.feature.me.MeTabPage
+import com.mytvb.ui.activity.MainActivity
+import com.mytvb.ui.fragment.main.MainNavigationViewModel
+import com.mytvb.ui.fragment.main.MainTabFocusTarget
+import com.mytvb.core.ui.base.OnBackPressedHandler
+import com.mytvb.core.ui.base.UiScale
+import com.mytvb.core.ui.tab.enableTouchNavigation
+import com.mytvb.core.ui.tab.focusNearestTabTo
+import com.mytvb.core.ui.tab.focusSelectedTab
+import com.mytvb.core.ui.tab.HomeTabPage
+import com.mytvb.core.ui.tab.SecondaryTabHost
+import com.mytvb.core.ui.tab.disableAdjacentPagePrefetch
+import com.mytvb.core.ui.tab.retainAllPagesAfterFirstLayout
+import com.mytvb.core.ui.focus.SpatialFocusNavigator
+import com.mytvb.core.ui.focus.EdgeTabSwitch
+import com.mytvb.core.common.settings.AppSettingsDataStore
+import com.mytvb.core.common.ext.getHomeDefaultStartPageIndex
+import com.mytvb.core.common.log.AppLog
+import org.koin.android.ext.android.inject
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
+
+class HomeFragment : Fragment(), MainTabFocusTarget, OnBackPressedHandler, SecondaryTabHost {
+
+    companion object {
+        fun newInstance(): HomeFragment {
+            return HomeFragment()
+        }
+    }
+
+    private var _binding: FragmentHomeBinding? = null
+    private val binding get() = _binding!!
+    private val mainNavigationViewModel: MainNavigationViewModel by activityViewModels()
+    private val appSettings: AppSettingsDataStore by inject()
+    private val appEventHub: AppEventHub by inject()
+    private lateinit var adapter: HomeFragmentStateAdapter
+    private var tabMediator: TabLayoutMediator? = null
+    private var pageChangeCallback: ViewPager2.OnPageChangeCallback? = null
+    private var tabSelectedListener: TabLayout.OnTabSelectedListener? = null
+    private var lastTabSelectedPosition = -1
+    private var lastTabSelectedTime = 0L
+
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        val t0 = SystemClock.elapsedRealtime()
+        _binding = FragmentHomeBinding.inflate(inflater, container, false)
+        AppLog.i("STARTUP", "HomeFragment.onCreateView elapsed=${SystemClock.elapsedRealtime() - t0}ms")
+        return binding.root
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        val t0 = SystemClock.elapsedRealtime()
+        super.onViewCreated(view, savedInstanceState)
+        // 「首页个人页签」开关（默认开）：开启时历史/稍后观看/收藏并入首页 tab
+        val initialSpecs = if (HomeFragmentStateAdapter.personalTabsEnabled(appSettings)) {
+            HomeFragmentStateAdapter.PERSONAL_SPECS
+        } else {
+            HomeFragmentStateAdapter.DEFAULT_SPECS
+        }
+        adapter = HomeFragmentStateAdapter(childFragmentManager, viewLifecycleOwner.lifecycle, initialSpecs)
+        binding.viewPager.adapter = adapter
+        // 冷启动先按需创建（只建当前页，不拖慢首帧），首帧后再保留全部 tab 页：
+        // 此后切 tab 不销毁 fragment，滚动进度/焦点/已加载数据切回来原样保留
+        // （配合各 tab 页"非当前页不加载"的懒加载，空壳成本极低）
+        binding.viewPager.disableAdjacentPagePrefetch()
+        binding.viewPager.retainAllPagesAfterFirstLayout()
+        tabMediator = TabLayoutMediator(binding.tabLayout, binding.viewPager) { tab, position ->
+            tab.text = adapter.getPageTitle(position)
+        }.also { it.attach() }
+        binding.tabLayout.enableTouchNavigation(
+            viewPager = binding.viewPager,
+            onNavigateDown = ::focusCurrentPageNearestContent,
+            onNavigateLeft = ::focusLeftFunctionArea,
+            onTabReselected = { index ->
+                // 重选当前 tab = 刷新（v2.0.9 行为，对齐 blbl refreshCurrentPageFromTabReselect；
+                // feed 页 refresh 自带刷新后回顶，"没看完的视频"顾虑在 blbl 同语义下未成立）
+                (adapter.getCurrentFragment(index) as? HomeTabPage)?.refresh()
+            }
+        )
+
+        tabSelectedListener = object : TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: TabLayout.Tab) {
+                lastTabSelectedPosition = tab.position
+                lastTabSelectedTime = System.currentTimeMillis()
+            }
+
+            override fun onTabUnselected(tab: TabLayout.Tab) {
+            }
+
+            override fun onTabReselected(tab: TabLayout.Tab) {
+            }
+        }.also { binding.tabLayout.addOnTabSelectedListener(it) }
+        pageChangeCallback = object : ViewPager2.OnPageChangeCallback() {
+            override fun onPageSelected(position: Int) {
+                context?.let { UiScale.probe("pageSelected:$position", it) }
+                notifyTabSelected(position)
+            }
+        }.also { callback ->
+            binding.viewPager.registerOnPageChangeCallback(callback)
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                mainNavigationViewModel.events.collectLatest { event ->
+                    val currentBinding = _binding ?: return@collectLatest
+                    if (isHidden) {
+                        return@collectLatest
+                    }
+                    if (event is MainNavigationViewModel.Event.MainTabSelected && event.index == 0) {
+                        (adapter.getCurrentFragment(currentBinding.viewPager.currentItem) as? HomeTabPage)
+                            ?.onTabSelected()
+                    }
+                }
+            }
+        }
+
+        // 会话跳变（登录/登出）同步刷新并入首页的个人页（历史/稍后观看/收藏）：
+        // ViewPager 内非当前页 isVisible=false 收不到子页自身订阅，宿主遍历兜底
+        // （同 MeFragment 的会话刷新逻辑）；开关关闭时没有 MeTabPage 子页，转型自然空跑
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                appEventHub.events.collectLatest { event ->
+                    if (event != AppEventHub.Event.UserSessionChanged) {
+                        return@collectLatest
+                    }
+                    adapter.specs.forEachIndexed { position, _ ->
+                        val fragment = adapter.getCurrentFragment(position) ?: return@forEachIndexed
+                        if (fragment !is MeTabPage) return@forEachIndexed
+                        if (fragment.view != null && !fragment.shouldDeferSessionRefresh()) {
+                            fragment.refresh()
+                        }
+                    }
+                }
+            }
+        }
+
+        binding.viewPager.currentItem = getDefaultTabIndex()
+        AppLog.i("STARTUP", "HomeFragment.onViewCreated elapsed=${SystemClock.elapsedRealtime() - t0}ms")
+    }
+
+    override fun onDestroyView() {
+        pageChangeCallback?.let { binding.viewPager.unregisterOnPageChangeCallback(it) }
+        pageChangeCallback = null
+        tabSelectedListener?.let { binding.tabLayout.removeOnTabSelectedListener(it) }
+        tabSelectedListener = null
+        tabMediator?.detach()
+        tabMediator = null
+        binding.viewPager.adapter = null
+        super.onDestroyView()
+        _binding = null
+    }
+
+    private fun getDefaultTabIndex(): Int {
+        return getHomeDefaultStartPageIndex(
+            maxIndex = adapter.itemCount - 1,
+            defaultIndex = 0,
+            // 番剧/影视的实际位置随「首页个人页签」开关变化，按当前 tab 配置取
+            animationIndex = specPositionOf(R.string.animation, fallback = 2),
+            cinemaIndex = specPositionOf(R.string.film_and_television, fallback = 3)
+        )
+    }
+
+    private fun specPositionOf(titleRes: Int, fallback: Int): Int {
+        val index = adapter.specs.indexOfFirst { it.titleRes == titleRes }
+        return if (index >= 0) index else fallback
+    }
+
+    /**
+     * 设置「首页个人页签」开关切换时由 MainActivity 调用（立即生效）：
+     * 换 tab 配置并把当前停留页重定位到同 itemId 的新位置（配置里找不到则回推荐）。
+     * view 尚未创建时跳过——下次 onViewCreated 会按开关读初始配置。
+     */
+    fun applyPersonalTabsEnabled(enabled: Boolean) {
+        val currentBinding = _binding ?: return
+        val target = if (enabled) HomeFragmentStateAdapter.PERSONAL_SPECS else HomeFragmentStateAdapter.DEFAULT_SPECS
+        if (adapter.specs == target) return
+        val currentItemId = adapter.getItemId(currentBinding.viewPager.currentItem)
+        adapter.updateSpecs(target)
+        val newPosition = target.indexOfFirst { it.itemId == currentItemId }
+            .let { if (it < 0) 0 else it }
+        currentBinding.viewPager.setCurrentItem(newPosition, false)
+    }
+
+
+    /**
+     * BACK 三层分发（对齐 blbl）：
+     * 内容区 → 聚焦当前选中的二级 tab；tab 栏 → 回左侧主边栏当前主 tab 按钮；
+     * 都不是（如焦点已在主边栏）→ 返回 false 交给 MainActivity 走双击退出。
+     */
+    override fun onBackPressed(): Boolean {
+        val currentBinding = _binding ?: return false
+        val tabFocus = currentBinding.tabLayout.hasFocus()
+        val contentFocus = currentBinding.viewPager.hasFocus()
+        AppLog.d("HomeBack", "onBackPressed tabFocus=$tabFocus contentFocus=$contentFocus isHidden=$isHidden")
+        if (tabFocus) {
+            val handled = (activity as? MainActivity)?.focusSidebarCurrentTab() == true
+            AppLog.d("HomeBack", "tab->sidebar handled=$handled")
+            return handled
+        }
+        if (contentFocus) {
+            val handled = currentBinding.tabLayout.focusSelectedTab()
+            AppLog.d("HomeBack", "content->tab handled=$handled")
+            return handled
+        }
+        return false
+    }
+
+    fun focusCurrentTab(anchorView: View? = view?.findFocus() ?: activity?.currentFocus): Boolean {
+        val currentBinding = _binding ?: return false
+        return currentBinding.tabLayout.focusNearestTabTo(anchorView)
+    }
+
+    /**
+     * 列表顶行 UP 的落点：聚焦当前选中的二级 tab（不切页），对齐 blbl focusSelectedTabIfAvailable。
+     */
+    override fun focusSelectedTabFromContent(): Boolean {
+        return _binding?.tabLayout?.focusSelectedTab() == true
+    }
+
+    /**
+     * 内容网格左右边缘切二级 tab（对齐 blbl 的边缘切页）。
+     * 首 tab 左边缘回退到主边栏、末 tab 右边缘吞键，均保持原有行为。
+     */
+    override fun switchAdjacentTabFromContentEdge(delta: Int): Boolean {
+        val currentBinding = _binding ?: return false
+        // 设置「卡片边缘切换标签」关闭：只关「切 tab」——左边缘环绕回主边栏
+        // 当前主 tab 对应按钮；右边缘吞键停原地（对齐 blbl 右边缘无外流）
+        if (!EdgeTabSwitch.enabled(appSettings)) {
+            if (delta < 0) {
+                return (activity as? MainActivity)?.focusSidebarCurrentTab() == true
+            }
+            return true
+        }
+        val target = currentBinding.viewPager.currentItem + delta
+        if (target < 0) {
+            return focusLeftFunctionArea()
+        }
+        if (target >= adapter.itemCount) {
+            return true
+        }
+        currentBinding.viewPager.setCurrentItem(target, true)
+        // 切页后旧页焦点随页面滑出，需把焦点交接到新页（页面 retain，恢复该页原浏览位置）；
+        // 平滑滚动期间布局未稳时首次请求可能落空，补一次延迟重试
+        currentBinding.viewPager.post {
+            if (_binding == null) return@post
+            if (!focusCurrentPageNearestContent()) {
+                currentBinding.viewPager.postDelayed({
+                    if (_binding != null) {
+                        focusCurrentPageNearestContent()
+                    }
+                }, 120L)
+            }
+        }
+        return true
+    }
+
+    override fun focusEntryFromMainTab(): Boolean {
+        return focusEntryFromMainTab(anchorView = null, preferSpatialEntry = false)
+    }
+
+    override fun focusEntryFromMainTab(anchorView: View?, preferSpatialEntry: Boolean): Boolean {
+        if (preferSpatialEntry && anchorView != null) {
+            val currentBinding = _binding ?: return false
+            if (isVerticallyAlignedWith(anchorView, currentBinding.tabLayout)) {
+                if (focusCurrentTab(anchorView)) return true
+            }
+            val handled = SpatialFocusNavigator.requestBestDescendant(
+                anchorView = anchorView,
+                root = currentBinding.root,
+                direction = View.FOCUS_RIGHT,
+                fallback = null
+            )
+            if (handled) return true
+        }
+        val handled = focusCurrentPagePrimaryContent(anchorView, preferSpatialEntry) ||
+            focusCurrentTab(anchorView)
+        return handled
+    }
+
+    private fun isVerticallyAlignedWith(anchor: View, target: View): Boolean {
+        val anchorRect = Rect()
+        val targetRect = Rect()
+        if (!anchor.getGlobalVisibleRect(anchorRect)) return false
+        if (!target.getGlobalVisibleRect(targetRect)) return false
+        return maxOf(anchorRect.top, targetRect.top) < minOf(anchorRect.bottom, targetRect.bottom)
+    }
+
+    private fun focusCurrentPagePrimaryContent(anchorView: View? = null, preferSpatialEntry: Boolean = false): Boolean {
+        return getCurrentTabPage()?.focusPrimaryContent(anchorView, preferSpatialEntry) == true
+    }
+
+    /** 顶部 tab 栏按 DOWN：就近聚焦可见第一项（列表位置不动，半截轻滚补齐）；回顶只由重选 tab 承担。 */
+    private fun focusCurrentPageNearestContent(): Boolean {
+        val page = getCurrentTabPage() ?: return false
+        if (page.focusNearestVisibleContent()) {
+            return true
+        }
+        return focusCurrentPagePrimaryContent()
+    }
+
+    private fun focusLeftFunctionArea(): Boolean {
+        return (activity as? MainActivity)?.focusLeftFunctionArea() == true
+    }
+
+    private fun getCurrentTabPage(): HomeTabPage? {
+        val currentItem = binding.viewPager.currentItem
+        val fragmentTag = "f${adapter.getItemId(currentItem)}"
+        return childFragmentManager.findFragmentByTag(fragmentTag) as? HomeTabPage
+    }
+
+    fun isCurrentPage(position: Int): Boolean {
+        val currentBinding = _binding ?: return false
+        return currentBinding.viewPager.currentItem == position
+    }
+
+    private fun notifyTabSelected(position: Int, retries: Int = 5) {
+        val page = adapter.getCurrentFragment(position) as? HomeTabPage
+        if (page != null) {
+            page.onTabSelected()
+        } else if (retries > 0) {
+            binding.viewPager.post { notifyTabSelected(position, retries - 1) }
+        }
+    }
+}

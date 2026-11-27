@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/backgroundColor">
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerViewVideos"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:clipToPadding="false"
+        android:descendantFocusability="afterDescendants"
+        android:focusable="false"
+        android:paddingTop="0dp"
+        android:paddingBottom="@dimen/px50"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- 进度圈与空态提示约束到 parent：recyclerViewVideos 会被 SwipeRefreshHelper 挪进
+         SwipeRefreshLayout（不再是本布局直接子 view），对它的约束引用会失效掉到左上角 -->
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="@dimen/px120"
+        android:layout_height="@dimen/px120"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- 空 tab 提示：该 tab 首屏加载完成且无内容时显示，纯展示不可聚焦；
+         bias 落在 tab 栏以下列表区域的垂直中心（header 总高约屏高一半） -->
+    <androidx.appcompat.widget.AppCompatTextView
+        android:id="@+id/tvEmpty"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/empty"
+        android:textColor="?android:attr/textColorSecondary"
+        android:textSize="@dimen/px36"
+        android:textStyle="bold"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.72" />
+
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/button_back"
+        android:layout_width="@dimen/px100"
+        android:layout_height="@dimen/px100"
+        android:layout_marginStart="@dimen/px20"
+        android:layout_marginTop="@dimen/px25"
+        android:background="@drawable/cell_background"
+        android:clickable="true"
+        android:elevation="@dimen/px10"
+        android:focusable="true"
+        android:padding="@dimen/px30"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:srcCompat="@drawable/ic_back"
+        app:tint="?android:attr/textColorPrimary" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

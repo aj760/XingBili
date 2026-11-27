@@ -1,0 +1,81 @@
+# MyTVB
+
+📺 一个专为 Android TV 设计的第三方 Bilibili 客户端，同时适配手机、平板与车机触屏，像素级对齐 BLBL。
+
+## ✨ 主要功能
+
+- 🎬 **视频播放** - UGC / 番剧 / 电影 / 电视剧 / 纪录片；8K / 4K / HDR / 杜比视界
+- 💬 **弹幕引擎** - 智能防挡；字号、透明度、速度、行距、区域可调
+- 📝 **评论面板** - 评论、楼中楼回复与评论配图
+- 📡 **直播 & 电视直播** - 直播弹幕即时显示；央视频道遥控器上下切台
+- ✈️ **空降助手** - 自动跳过恰饭 / 开场 / 片尾
+- 🎮 **互动视频 / 抖音模式** - 互动分支选择；上下滑动切换推荐
+- 👶 **青少年模式** - 观看时长限制、休息提醒、公益广告
+- 🖱️ **长按快捷菜单** - 稍后观看、收藏、视频详情、UP 主主页、不感兴趣
+- 📲 **扫码登录** - TV 端扫码；大会员 / 头像框 / 等级徽章全应用显示
+- 📚 **我的** - 历史、收藏、稍后再看、关注 / 粉丝列表
+- 🔍 **搜索** - 视频、用户搜索，可直接关注
+- 🌏 **多语言** - 简体中文 / 繁體中文 / English
+- 🖥️ **界面缩放** - 缩放、文字、卡片大小可调；特殊分辨率自动适配
+- 🎚️ **播放设置** - 画质 / 音质 / 倍速 / 编码、无缝清晰度、音量均衡、字幕三态
+
+## 💡 小技巧
+
+- ⏩ **播放倍速** - 长按 OK 临时 2 倍速；默认倍速最高 3.0x，音乐区可默认 1x
+- ⏪ **快进快退** - 长按左右约 10 秒走完全片；轻按 10 秒可连按；拖动带预览小窗
+- 🔄 **回到顶部 / 刷新** - 列表页按菜单键，或重选当前标签
+- 🔙 **逐级返回** - 内容 → 标签栏 → 侧边栏；播放页左上角有返回按钮
+- ↔️ **边缘切标签** - 焦点在列表最左 / 最右边缘时继续按方向键
+- 🎛️ **自定义控制区按键** - 常驻进度条、上 / 下一个、倍速、弹幕开关等可加入（设置 → 播放界面）
+- 🔊 **音量均衡 / 无缝清晰度** - 默认开启，播放中即时生效
+- 📺 **电视直播操作** - 上下切台、确定键呼出控制栏、菜单键选频道
+- 🕘 **历史自动刷新** - 进入历史页即拉取最新记录
+
+## 📄 更新日志
+
+见 [CHANGELOG.md](CHANGELOG.md)。
+
+## 🛠️ 技术栈
+
+- **Kotlin 2.1.0** · MVVM + Koin 依赖注入
+- **Coroutines + Flow + LiveData** 异步
+- **Retrofit + OkHttp + Gson** 网络层
+- **Media3 (ExoPlayer)** 视频播放（电视直播走 WebView，可选腾讯 X5 内核）
+- **弹幕引擎**（Protobuf 协议解析）
+- **DataStore Preferences** 数据存储
+- **三语国际化**（简体中文 / 繁體中文 / English）
+- **AndroidX** UI 组件
+- **minSdk 23 (Android 6.0)** / **targetSdk 35 (Android 15)**
+
+## 📷 APP 截图
+
+主界面
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/b746a1dd-8243-4378-a1ea-c023460323b7" />
+
+播放 & 弹幕
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/4a0199e0-64a0-4762-9d45-8ec2ff58524a" />
+
+屏蔽功能
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/cae6be14-85cb-41e0-bfee-098214ffbb43" />
+
+## 🙏 感谢
+
+- [bilibili-API-collect](https://github.com/SocialSisterYi/bilibili-API-collect) - B 站 API 收集整理
+- [BBLL](https://github.com/xiaye13579/BBLL) - 绝大部分页面和操作逻辑参考自 BBLL 🥰
+- [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) / [BiliPai](https://github.com/jay3-yy/BiliPai) / [Blbl](https://github.com/cat3399/blbl) - 部分关键功能参考
+- [NativeWasmTv](https://github.com/buhanzhe/NativeWasmTv) / [TvWasm/cjs](https://github.com/TvWasm/cjs) - CCTV 直播原生直拉架构与 H5e 流解密封装参考
+- [cctv-h5e-decrypt](https://github.com/xiaoxi-ij478/cctv-h5e-decrypt)（MIT）- CCTV H5e 解密 wasm 转译产物来源
+- 其它开源第三方 B 站客户端
+
+## ⚠️ 免责声明
+
+- 📚 **用途**：本项目仅供学习交流与技术研究，不得用于任何非法活动或干扰 B 站正常运营
+- ©️ **版权**：所有视频、弹幕、图片、文字等内容版权归 Bilibili 及原创作者所有，本项目不存储任何上述内容，仅作播放呈现
+- ™️ **商标**：「Bilibili」「B 站」及相关 Logo、形象均为上海宽娱数码科技有限公司的商标，本项目与之无任何关联
+- 🔒 **隐私**：本项目不收集、不上传任何用户数据；登录凭据保存在本地，不上传至任何第三方服务器
+- 🚫 **无担保**：本项目「按现状」提供，不保证功能可用、稳定或持续更新，因使用本项目产生的任何直接或间接损失，作者不承担责任
+- 🚫 **禁止宣传**：不得在 B 站、官方账号区域（含微博评论区）及微信公众号宣传本项目
+- 🚫 **禁止牟利**：不得利用本项目牟利；本项目无任何盈利，第三方盈利与本项目无关
+- 📮 **侵权联系**：若本项目侵犯了您的合法权益，请联系作者，确认后将在第一时间处理或下架
+
+> 💡 代码由 Codex 和 [智谱 AI](https://bigmodel.cn/) 编写，如有问题请联系 [OpenAI](https://openai.com/) 或 [智谱](https://bigmodel.cn/) 😤

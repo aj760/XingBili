@@ -1,0 +1,273 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Animation.AppCompat.Dialog" parent="@style/Base.Animation.AppCompat.Dialog">
+    </style>
+    <style name="BlueTheme" parent="@style/Theme.Blbl">
+        <item name="backgroundColor">@color/systemBackgroundColorBlue</item>
+        <item name="buttonBackgroundColor">@color/buttonBackgroundBlue</item>
+        <item name="dividerColor">@color/divideColorBlue</item>
+        <item name="fourthBackgroundColor">@color/fourthBackgroundColorBlue</item>
+        <item name="subBackgroundColor">@color/subBackgroundColorBlue</item>
+        <item name="tabBarHighlight">@color/tab_highlightBlue</item>
+        <item name="tabBarNormal">@color/tab_normalBlue</item>
+        <item name="thirdBackgroundColor">@color/thirdBackgroundColorBlue</item>
+    </style>
+    <style name="ClassicsTheme" parent="@style/Theme.Blbl">
+        <item name="backgroundColor">@color/transparent</item>
+        <item name="buttonBackgroundColor">@color/buttonBackgroundClassic</item>
+        <item name="colorAccent">@color/tab_highlightClassic</item>
+        <item name="colorControlHighlight">@color/highlightClassic</item>
+        <item name="colorPrimary">@color/tab_highlightClassic</item>
+        <item name="dividerColor">@color/divideColorClassic</item>
+        <item name="fourthBackgroundColor">@color/fourthBackgroundColorClassic</item>
+        <item name="subBackgroundColor">@color/subBackgroundColorClassic</item>
+        <item name="tabBarHighlight">@color/tab_highlightClassic</item>
+        <item name="tabBarNormal">@color/divideColorPink</item>
+        <item name="thirdBackgroundColor">@color/thirdBackgroundColorClassic</item>
+    </style>
+    <style name="DarkTheme" parent="@style/Theme.Blbl">
+    </style>
+    <style name="DialogTheme" parent="@style/Theme.Blbl">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowIsFloating">true</item>
+        <item name="android:windowAnimationStyle">@style/Animation.AppCompat.Dialog</item>
+        <item name="android:windowFullscreen">false</item>
+        <item name="android:backgroundDimEnabled">true</item>
+        <item name="windowActionModeOverlay">true</item>
+    </style>
+    <style name="FullScreenDialogTheme" parent="@style/Theme.Blbl">
+        <item name="android:windowBackground">?attr/backgroundColor</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="windowActionModeOverlay">true</item>
+    </style>
+    <style name="ExoMediaButton" parent="">
+        <item name="android:background">?android:attr/selectableItemBackground</item>
+        <item name="android:layout_width">@dimen/exo_media_button_width</item>
+        <item name="android:layout_height">@dimen/exo_media_button_height</item>
+    </style>
+    <style name="ExoMediaButton.FastForward" parent="@style/ExoMediaButton">
+        <item name="android:src">@drawable/exo_legacy_controls_fastforward</item>
+        <item name="android:contentDescription">@string/exo_controls_fastforward_description</item>
+    </style>
+    <style name="ExoMediaButton.Next" parent="@style/ExoMediaButton">
+        <item name="android:src">@drawable/exo_legacy_controls_next</item>
+        <item name="android:contentDescription">@string/exo_controls_next_description</item>
+    </style>
+    <style name="ExoMediaButton.Pause" parent="@style/ExoMediaButton">
+        <item name="android:src">@drawable/exo_legacy_controls_pause</item>
+        <item name="android:contentDescription">@string/exo_controls_pause_description</item>
+    </style>
+    <style name="ExoMediaButton.Play" parent="@style/ExoMediaButton">
+        <item name="android:src">@drawable/exo_legacy_controls_play</item>
+        <item name="android:contentDescription">@string/exo_controls_play_description</item>
+    </style>
+    <style name="ExoMediaButton.Previous" parent="@style/ExoMediaButton">
+        <item name="android:src">@drawable/exo_legacy_controls_previous</item>
+        <item name="android:contentDescription">@string/exo_controls_previous_description</item>
+    </style>
+    <style name="ExoMediaButton.Rewind" parent="@style/ExoMediaButton">
+        <item name="android:src">@drawable/exo_legacy_controls_rewind</item>
+        <item name="android:contentDescription">@string/exo_controls_rewind_description</item>
+    </style>
+    <style name="ExoMediaButton.VR" parent="@style/ExoMediaButton">
+        <item name="android:src">@drawable/exo_legacy_controls_vr</item>
+        <item name="android:contentDescription">@string/exo_controls_vr_description</item>
+    </style>
+    <style name="ExoStyledControls.Button.Bottom.CC" parent="@style/ExoStyledControls.Button.Bottom">
+        <item name="android:src">@drawable/exo_styled_controls_subtitle_off</item>
+        <item name="android:contentDescription">@string/exo_controls_cc_disabled_description</item>
+    </style>
+    <style name="ExoStyledControls.Button.Bottom.FullScreen" parent="@style/ExoStyledControls.Button.Bottom">
+        <item name="android:src">@drawable/exo_styled_controls_fullscreen_enter</item>
+        <item name="android:contentDescription">@string/exo_controls_fullscreen_enter_description</item>
+    </style>
+    <style name="ExoStyledControls.Button.Bottom.OverflowHide" parent="@style/ExoStyledControls.Button.Bottom">
+        <item name="android:src">@drawable/exo_styled_controls_overflow_hide</item>
+        <item name="android:contentDescription">@string/exo_controls_overflow_hide_description</item>
+    </style>
+    <style name="ExoStyledControls.Button.Bottom.OverflowShow" parent="@style/ExoStyledControls.Button.Bottom">
+        <item name="android:src">@drawable/exo_styled_controls_overflow_show</item>
+        <item name="android:contentDescription">@string/exo_controls_overflow_show_description</item>
+    </style>
+    <style name="ExoStyledControls.Button.Bottom.RepeatToggle" parent="@style/ExoStyledControls.Button.Bottom">
+        <item name="android:src">@drawable/exo_styled_controls_repeat_off</item>
+        <item name="android:contentDescription">@string/exo_controls_repeat_off_description</item>
+    </style>
+    <style name="ExoStyledControls.Button.Bottom.Settings" parent="@style/ExoStyledControls.Button.Bottom">
+        <item name="android:src">@drawable/exo_styled_controls_settings</item>
+        <item name="android:contentDescription">@string/exo_controls_settings_description</item>
+    </style>
+    <style name="ExoStyledControls.Button.Bottom.Shuffle" parent="@style/ExoStyledControls.Button.Bottom">
+        <item name="android:src">@drawable/exo_styled_controls_shuffle_off</item>
+        <item name="android:contentDescription">@string/exo_controls_shuffle_off_description</item>
+    </style>
+    <style name="ExoStyledControls.Button.Bottom.VR" parent="@style/ExoStyledControls.Button.Bottom">
+        <item name="android:src">@drawable/exo_styled_controls_vr</item>
+        <item name="android:contentDescription">@string/exo_controls_vr_description</item>
+    </style>
+    <style name="ExoStyledControls.Button.Center.Next" parent="@style/ExoStyledControls.Button.Center">
+        <item name="android:padding">@dimen/exo_icon_padding</item>
+        <item name="android:src">@drawable/exo_styled_controls_next</item>
+        <item name="android:contentDescription">@string/exo_controls_next_description</item>
+    </style>
+    <style name="ExoStyledControls.Button.Center.PlayPause" parent="@style/ExoStyledControls.Button.Center">
+        <item name="android:padding">@dimen/exo_icon_padding</item>
+        <item name="android:src">@drawable/exo_styled_controls_play</item>
+        <item name="android:contentDescription">@string/exo_controls_play_description</item>
+    </style>
+    <style name="ExoStyledControls.Button.Center.Previous" parent="@style/ExoStyledControls.Button.Center">
+        <item name="android:padding">@dimen/exo_icon_padding</item>
+        <item name="android:src">@drawable/exo_styled_controls_previous</item>
+        <item name="android:contentDescription">@string/exo_controls_previous_description</item>
+    </style>
+    <style name="ExoStyledControls.TimeText.Duration" parent="@style/ExoStyledControls.TimeText">
+        <item name="android:textColor">@color/exo_white_opacity_70</item>
+        <item name="android:text">@string/exo_controls_time_placeholder</item>
+    </style>
+    <style name="ExoStyledControls.TimeText.Position" parent="@style/ExoStyledControls.TimeText">
+        <item name="android:textColor">@color/exo_white</item>
+        <item name="android:text">@string/exo_controls_time_placeholder</item>
+    </style>
+    <style name="ExoStyledControls.TimeText.Separator" parent="@style/ExoStyledControls.TimeText">
+        <item name="android:textColor">@color/exo_white_opacity_70</item>
+        <item name="android:text">·</item>
+    </style>
+    <style name="LightTheme" parent="@style/WhiteTheme">
+    </style>
+    <style name="PinkTheme" parent="@style/LightTheme">
+        <item name="backgroundColor">@color/systemBackgroundColorPink</item>
+        <item name="buttonBackgroundColor">@color/buttonBackgroundPink</item>
+        <item name="dividerColor">@color/divideColorPink</item>
+        <item name="fourthBackgroundColor">@color/fourthBackgroundColorPink</item>
+        <item name="subBackgroundColor">@color/subBackgroundColorPink</item>
+        <item name="tabBarHighlight">@color/tab_highlightPink</item>
+        <item name="tabBarNormal">@color/fourthBackgroundColor</item>
+        <item name="thirdBackgroundColor">@color/thirdBackgroundColorPink</item>
+    </style>
+    <style name="PurpleTheme" parent="@style/Theme.Blbl">
+        <item name="backgroundColor">@color/systemBackgroundColorPurple</item>
+        <item name="buttonBackgroundColor">@color/buttonBackgroundPurple</item>
+        <item name="dividerColor">@color/divideColorPurple</item>
+        <item name="fourthBackgroundColor">@color/fourthBackgroundColorPurple</item>
+        <item name="subBackgroundColor">@color/subBackgroundColorPurple</item>
+        <item name="tabBarHighlight">@color/tab_highlightPurple</item>
+        <item name="tabBarNormal">@color/tab_normalPurple</item>
+        <item name="thirdBackgroundColor">@color/thirdBackgroundColorPurple</item>
+    </style>
+    <style name="RedTheme" parent="@style/Theme.Blbl">
+        <item name="backgroundColor">@color/systemBackgroundColorRed</item>
+        <item name="buttonBackgroundColor">@color/buttonBackgroundRed</item>
+        <item name="dividerColor">@color/divideColorRed</item>
+        <item name="fourthBackgroundColor">@color/fourthBackgroundColorRed</item>
+        <item name="subBackgroundColor">@color/subBackgroundColorRed</item>
+        <item name="tabBarHighlight">@color/tab_highlightRed</item>
+        <item name="tabBarNormal">@color/tab_normalRed</item>
+        <item name="thirdBackgroundColor">@color/thirdBackgroundColorRed</item>
+    </style>
+    <style name="SearchPageTabText" parent="@android:style/TextAppearance.Widget.TabWidget">
+        <item name="android:textSize">@dimen/px32</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:background">@android:color/transparent</item>
+    </style>
+    <style name="Theme.Blbl" parent="@style/Theme.AppCompat.NoActionBar">
+        <item name="android:textColorPrimary">@color/textColor</item>
+        <item name="android:textColorSecondary">@color/subTextColor</item>
+        <item name="android:windowBackground">@color/systemBackgroundColor</item>
+        <item name="android:windowSplashScreenBackground" tools:targetApi="31">@color/systemBackgroundColor</item>
+        <item name="android:windowSplashScreenAnimatedIcon" tools:targetApi="31">@null</item>
+        <item name="android:windowAnimationStyle">@style/WindowAnimationTransition</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="backgroundColor">@color/systemBackgroundColor</item>
+        <item name="buttonBackgroundColor">@color/divideColor</item>
+        <item name="colorAccent">@color/colorAccent</item>
+        <item name="colorControlHighlight">@color/colorAccent2</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorOnSecondary">@color/black</item>
+        <item name="colorPrimary">@color/purple_500</item>
+        <item name="colorPrimaryVariant">@color/purple_700</item>
+        <item name="colorSecondary">@color/teal_200</item>
+        <item name="colorSecondaryVariant">@color/teal_700</item>
+        <item name="dividerColor">@color/divideColor</item>
+        <item name="fourthBackgroundColor">@color/fourthBackgroundColor</item>
+        <item name="subBackgroundColor">@color/subBackgroundColor</item>
+        <item name="tabBarHighlight">@color/fourthBackgroundColor</item>
+        <item name="tabBarNormal">@color/tab_normal</item>
+        <item name="tabBarSelected">@color/white</item>
+        <item name="thirdBackgroundColor">@color/backgroundColor</item>
+    </style>
+    <style name="Theme.MyBLBL" parent="@style/Theme.Blbl">
+    </style>
+    <style name="Theme.MyBLBL.Main" parent="@style/Theme.Blbl">
+        <item name="android:windowAnimationStyle">@style/WindowAnimationNone</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="windowNoTitle">true</item>
+        <item name="windowActionBar">false</item>
+    </style>
+    <style name="Theme.MyBLBL.Launcher" parent="@style/Theme.Blbl">
+        <item name="android:windowBackground">@drawable/bg_splash</item>
+        <item name="android:windowSplashScreenBackground" tools:targetApi="31">@color/systemBackgroundColor</item>
+        <item name="android:windowSplashScreenAnimatedIcon" tools:targetApi="31">@mipmap/ic_launcher_loading_splash</item>
+        <item name="android:windowAnimationStyle">@style/WindowAnimationNone</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="windowNoTitle">true</item>
+        <item name="windowActionBar">false</item>
+        <item name="backgroundColor">@color/systemBackgroundColor</item>
+    </style>
+    <style name="TopPageTabText" parent="@android:style/TextAppearance.Widget.TabWidget">
+        <item name="android:textSize">@dimen/px40</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:background">@android:color/transparent</item>
+    </style>
+    <!-- UP主弹窗 tab：文字大小固定、单行不换行，tab 宽度随文字自适应（tabMode=scrollable 可滑），
+         tabTextAppearance 与 tabSelectedTextAppearance 用同一 style，避免选中态字号变大 -->
+    <style name="OwnerDetailTabText" parent="@android:style/TextAppearance.Widget.TabWidget">
+        <item name="android:textSize">@dimen/px40</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:background">@android:color/transparent</item>
+    </style>
+    <style name="WhiteTheme" parent="@style/Theme.AppCompat.Light.NoActionBar">
+        <item name="android:textColorPrimary">@color/textColorLight</item>
+        <item name="android:textColorSecondary">@color/subTextColorLight</item>
+        <item name="android:windowAnimationStyle">@style/WindowAnimationTransition</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="backgroundColor">@color/systemBackgroundColorLight</item>
+        <item name="buttonBackgroundColor">@color/subBackgroundColorLight</item>
+        <item name="colorAccent">@color/colorAccent</item>
+        <item name="colorControlHighlight">@color/colorAccent2</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorOnSecondary">@color/black</item>
+        <item name="colorPrimary">@color/purple_500</item>
+        <item name="colorPrimaryVariant">@color/purple_700</item>
+        <item name="colorSecondary">@color/teal_200</item>
+        <item name="colorSecondaryVariant">@color/teal_700</item>
+        <item name="dividerColor">@color/divideColorLight</item>
+        <item name="fourthBackgroundColor">@color/fourthBackgroundColorLight</item>
+        <item name="subBackgroundColor">@color/subBackgroundColorLight</item>
+        <item name="tabBarHighlight">@color/subBackgroundColorLight</item>
+        <item name="tabBarNormal">@color/tab_normalLight</item>
+        <item name="tabBarSelected">@color/black</item>
+        <item name="thirdBackgroundColor">@color/backgroundColorLight</item>
+    </style>
+    <style name="WindowAnimationTransition" parent="">
+        <item name="android:windowEnterAnimation">@android:anim/fade_in</item>
+        <item name="android:windowExitAnimation">@android:anim/fade_out</item>
+    </style>
+    <style name="WindowAnimationNone" parent="">
+        <item name="android:windowEnterAnimation">@null</item>
+        <item name="android:windowExitAnimation">@null</item>
+    </style>
+    <style name="CommentPanelWindowAnimation" parent="">
+        <item name="android:windowEnterAnimation">@anim/comment_panel_slide_enter_right</item>
+        <item name="android:windowExitAnimation">@anim/comment_panel_slide_exit_right</item>
+    </style>
+    <style name="SeekOverlaySecondsTextAppearance" parent="@style/TextAppearance.AppCompat">
+        <item name="android:textSize">@dimen/px48</item>
+        <item name="android:textColor">@android:color/white</item>
+    </style>
+</resources>

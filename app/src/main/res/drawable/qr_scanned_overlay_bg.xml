@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 已扫码待确认覆盖层：90% 黑遮罩压住二维码纹理（实测 60% 时码块从白字后透出，
+     细笔画文字与码块融在一起难辨认；此状态二维码已完成使命，无需保持可扫） -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#E6000000" />
+    <corners android:radius="@dimen/px15" />
+</shape>

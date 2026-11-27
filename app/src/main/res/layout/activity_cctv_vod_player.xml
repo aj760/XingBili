@@ -1,0 +1,254 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/player_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/black"
+    android:focusable="true"
+    android:focusableInTouchMode="true">
+
+    <!-- WebView 由代码创建并加入（X5 内核优先，失败回退系统 WebView） -->
+    <FrameLayout
+        android:id="@+id/web_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@android:color/black" />
+
+    <!-- 原生播放视图：「影视极速模式」开启时 ExoPlayer 直连 h5e 流（H5e 解密），
+         WebView 整页仅作兜底。TextureView 与直播页同款（SurfaceView 长时间渲染崩）。 -->
+    <androidx.media3.ui.PlayerView
+        android:id="@+id/native_player_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@android:color/black"
+        android:visibility="gone"
+        app:surface_type="texture_view"
+        app:use_controller="false" />
+
+    <!-- 起播黑盖层：收敛样式要等 onPageFinished 后才注入，此前 WebView 会渲染出
+         央视网页原文（白底 header/正文），盖住它让加载期只见转圈不见网页（issue#103）。 -->
+    <View
+        android:id="@+id/web_cover"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@android:color/black"
+        android:visibility="gone" />
+
+    <!-- 加载圈：B 站同款 load_data.gif（onCreate 挂帧动画；裸 ProgressBar 的 indeterminate
+         走 ObjectAnimator，电视 ROM 动画缩放=0 时圈静止不转） -->
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/loading"
+        android:contentDescription="@string/loading"
+        android:layout_width="@dimen/px80"
+        android:layout_height="@dimen/px80"
+        android:layout_gravity="center"
+        android:visibility="gone" />
+
+    <androidx.appcompat.widget.AppCompatTextView
+        android:id="@+id/text_loading"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_marginTop="@dimen/px140"
+        android:text="@string/cctv_vod_stream_loading"
+        android:textColor="@android:color/white"
+        android:textSize="@dimen/px26"
+        android:visibility="gone" />
+
+    <androidx.appcompat.widget.AppCompatTextView
+        android:id="@+id/text_error"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:textColor="@android:color/white"
+        android:textSize="@dimen/px30"
+        android:visibility="gone" />
+
+    <!-- 暂停指示：暂停时右下角显示大暂停图标，与普通视频播放器同款同位置。
+         放在控制条之前（z 序更低），即使缩放导致边缘重叠也不会挡住控制条按钮。 -->
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/image_pause_indicator"
+        android:layout_width="@dimen/px135"
+        android:layout_height="@dimen/px135"
+        android:layout_gravity="end|bottom"
+        android:layout_marginEnd="@dimen/px90"
+        android:layout_marginBottom="@dimen/px169"
+        android:alpha="0.9"
+        android:contentDescription="@string/pause"
+        android:visibility="gone"
+        app:srcCompat="@drawable/ic_pause_new" />
+
+    <!-- 常显时钟：「时间常驻显示」开启时右上角常驻（顶栏呼出时避让，样式与顶栏时钟一致） -->
+    <TextClock
+        android:id="@+id/always_clock"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end|top"
+        android:layout_marginTop="@dimen/px18"
+        android:layout_marginEnd="@dimen/px50"
+        android:shadowColor="@color/black"
+        android:shadowRadius="7"
+        android:textColor="@color/white"
+        android:textSize="@dimen/px50"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
+    <!-- 顶部渐变 + 左上返回：与普通播放器一致（其他页面内容变化也不遮挡返回按钮） -->
+    <FrameLayout
+        android:id="@+id/top_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        android:background="@drawable/player_top_gradient"
+        android:clipToPadding="false"
+        android:paddingStart="@dimen/px30"
+        android:paddingTop="@dimen/px10"
+        android:paddingEnd="@dimen/px30"
+        android:paddingBottom="@dimen/px30"
+        android:visibility="gone">
+
+        <com.mytvb.feature.player.view.PlayerControlButton
+            android:id="@+id/button_back"
+            android:layout_width="@dimen/px80"
+            android:layout_height="@dimen/px80"
+            android:layout_gravity="start|top"
+            android:background="@drawable/cell_background"
+            android:clickable="true"
+            android:contentDescription="@string/back"
+            android:focusable="true"
+            android:padding="@dimen/px18"
+            app:srcCompat="@drawable/ic_back" />
+
+        <!-- 顶栏时钟：与普通播放器顶栏同款（普通播放器控制栏自带，此处补齐） -->
+        <TextClock
+            android:id="@+id/text_clock"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end|top"
+            android:layout_marginTop="@dimen/px8"
+            android:layout_marginEnd="@dimen/px20"
+            android:shadowColor="@color/black"
+            android:shadowRadius="7"
+            android:textColor="@color/white"
+            android:textSize="@dimen/px50"
+            android:textStyle="bold" />
+    </FrameLayout>
+
+    <!-- 我们自己的控制条：官方播放器只认鼠标/触摸，遥控器操作不了，
+         所以播放控制与菜单由这一层承担，再通过 JS 驱动官方播放器。
+         布局与样式对齐普通播放器：标题 → 进度条独占一行 → 按钮行（时间在最右）。 -->
+    <LinearLayout
+        android:id="@+id/controller"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="@drawable/focus_background"
+        android:orientation="vertical"
+        android:paddingStart="@dimen/px30"
+        android:paddingTop="@dimen/px20"
+        android:paddingEnd="@dimen/px30"
+        android:paddingBottom="@dimen/px30">
+
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/text_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:shadowColor="@android:color/black"
+            android:shadowDx="1.5"
+            android:shadowDy="1.3"
+            android:shadowRadius="1.6"
+            android:textColor="@android:color/white"
+            android:textSize="@dimen/px40"
+            android:textStyle="bold" />
+
+        <com.mytvb.feature.player.view.DefaultTimeBar
+            android:id="@+id/seek_bar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/px5"
+            app:bar_height="@dimen/px6"
+            app:played_color="#FF0088BB"
+            app:scrubber_dragged_size="46dp"
+            app:scrubber_drawable="@drawable/ic_progress_head"
+            app:scrubber_enabled_size="34dp"
+            app:scrubber_focus_peak_size="54dp"
+            app:touch_target_height="60dp" />
+
+        <!-- 按钮行：播放 / 画质 / 选集，最右侧显示 当前时间 · 总时长 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/px10"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <com.mytvb.feature.player.view.PlayerControlButton
+                android:id="@+id/button_play"
+                android:layout_width="@dimen/px113"
+                android:layout_height="@dimen/px113"
+                android:background="@drawable/cell_background"
+                android:clickable="true"
+                android:contentDescription="@string/play_pause"
+                android:focusable="true"
+                android:padding="@dimen/px32"
+                android:src="@drawable/ic_play" />
+
+            <com.mytvb.feature.player.view.PlayerControlButton
+                android:id="@+id/button_quality"
+                android:layout_width="@dimen/px113"
+                android:layout_height="@dimen/px113"
+                android:layout_marginStart="@dimen/px20"
+                android:background="@drawable/cell_background"
+                android:clickable="true"
+                android:contentDescription="@string/cctv_quality"
+                android:focusable="true"
+                android:padding="@dimen/px23"
+                android:src="@drawable/ic_player_setting" />
+
+            <com.mytvb.feature.player.view.PlayerControlButton
+                android:id="@+id/button_episode"
+                android:layout_width="@dimen/px113"
+                android:layout_height="@dimen/px113"
+                android:layout_marginStart="@dimen/px20"
+                android:background="@drawable/cell_background"
+                android:clickable="true"
+                android:contentDescription="@string/choose_episode"
+                android:focusable="true"
+                android:padding="@dimen/px34"
+                android:src="@drawable/ic_list" />
+
+            <Space
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:id="@+id/text_position"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@android:color/white"
+                android:textSize="@dimen/px35" />
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:id="@+id/text_time_separator"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingStart="@dimen/px10"
+                android:paddingEnd="@dimen/px10"
+                android:text="·"
+                android:textColor="@android:color/white"
+                android:textSize="@dimen/px35" />
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:id="@+id/text_duration"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@android:color/white"
+                android:textSize="@dimen/px35" />
+        </LinearLayout>
+    </LinearLayout>
+
+</FrameLayout>

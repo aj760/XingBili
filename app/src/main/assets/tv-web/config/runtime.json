@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "imageLoadRules": [
+    {
+      "match": "prefix",
+      "url": "https://www.btime.com",
+      "script": "tv.user.js",
+      "mode": "allow",
+      "reason": "北京广播电视台直播页面依赖图片资源初始化播放器"
+    }
+  ]
+}

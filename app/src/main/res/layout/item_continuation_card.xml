@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 历史页「继续观看」横条卡片：封面 + 标题 + 剩余时长 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:focusable="true"
+    android:background="@drawable/cell_background">
+
+    <ImageView
+        android:id="@+id/iv_cover"
+        android:layout_width="@dimen/px250"
+        android:layout_height="@dimen/px150"
+        android:scaleType="centerCrop" />
+
+    <TextView
+        android:id="@+id/tv_title"
+        android:layout_width="@dimen/px250"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:gravity="center_vertical"
+        android:maxLines="1"
+        android:paddingStart="@dimen/px6"
+        android:paddingTop="@dimen/px6"
+        android:paddingEnd="@dimen/px6"
+        android:textColor="@color/textColor"
+        android:textSize="@dimen/px22" />
+
+    <TextView
+        android:id="@+id/tv_progress"
+        android:layout_width="@dimen/px250"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:gravity="center_vertical"
+        android:maxLines="1"
+        android:paddingStart="@dimen/px6"
+        android:paddingEnd="@dimen/px6"
+        android:paddingBottom="@dimen/px6"
+        android:textColor="@color/grey"
+        android:textSize="@dimen/px20" />
+</LinearLayout>

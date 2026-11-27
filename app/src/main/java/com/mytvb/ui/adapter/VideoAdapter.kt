@@ -1,0 +1,518 @@
+package com.mytvb.ui.adapter
+
+import android.annotation.SuppressLint
+import android.graphics.Outline
+import android.view.KeyEvent
+import android.view.MotionEvent
+import android.view.View
+import android.view.ViewGroup
+import android.view.ViewOutlineProvider
+import androidx.core.content.ContextCompat
+import com.mytvb.R
+import com.mytvb.model.video.Dimension
+import com.mytvb.model.video.VideoModel
+import com.mytvb.core.ui.base.BaseVideoAdapter
+import com.mytvb.core.ui.base.BaseVideoViewHolder
+import com.mytvb.core.ui.image.ImageLoader
+import com.mytvb.core.common.format.NumberUtils
+import com.mytvb.core.common.log.AppLog
+import com.mytvb.core.common.log.VideoCardPerfLogger
+import com.mytvb.core.common.time.TimeUtils
+import com.mytvb.core.ui.focus.VideoCardFocusHelper
+import com.mytvb.core.ui.video.VideoLightCardFactory
+import com.mytvb.core.ui.video.VideoCardViews
+import com.mytvb.ui.dialog.VideoCardMenuDialog
+import java.util.concurrent.atomic.AtomicInteger
+
+class VideoAdapter(
+    private val displayStyle: DisplayStyle = DisplayStyle.DEFAULT,
+    private val itemWidthPx: Int? = null,
+    private val onItemClick: (VideoModel) -> Unit = {},
+    private val titleLines: Int = 2,
+    private val showOwnerLine: Boolean = true,
+    onTopEdgeUp: (() -> Boolean)? = null,
+    onBottomEdgeDown: (() -> Boolean)? = null,
+    onLeftEdge: (() -> Boolean)? = null,
+    onRightEdge: (() -> Boolean)? = null,
+    onItemFocused: ((Int) -> Unit)? = null,
+    onItemFocusedWithView: ((View, Int) -> Unit)? = null,
+    onItemDpad: ((View, Int, KeyEvent) -> Boolean)? = null,
+    onItemsChanged: (() -> Unit)? = null,
+    private val detectPortraitFromCover: Boolean = true,
+    private val fastFirstScreenCovers: Boolean = false,
+    private val fastFirstScreenCoverCount: Int = 8
+) : BaseVideoAdapter<VideoModel, VideoAdapter.VideoViewHolder>() {
+
+    var currentPlayingAid: Long = 0
+
+    companion object {
+        private const val VIEW_TYPE_DEFAULT_START = 0x560100
+        private const val VIEW_TYPE_HISTORY_START = 0x570100
+        private val nextDefaultViewType = AtomicInteger(VIEW_TYPE_DEFAULT_START)
+        private val nextHistoryViewType = AtomicInteger(VIEW_TYPE_HISTORY_START)
+        private val portraitDetectedBvids = mutableSetOf<String>()
+    }
+
+    private val contentViewType = when (displayStyle) {
+        DisplayStyle.DEFAULT -> nextDefaultViewType.getAndIncrement()
+        DisplayStyle.HISTORY -> nextHistoryViewType.getAndIncrement()
+    }
+
+    init {
+        this.onTopEdgeUp = onTopEdgeUp
+        this.onBottomEdgeDown = onBottomEdgeDown
+        this.onLeftEdge = onLeftEdge
+        this.onRightEdge = onRightEdge
+        this.onItemFocused = onItemFocused
+        this.onItemFocusedWithView = onItemFocusedWithView
+        this.onItemDpad = onItemDpad
+        this.onItemsChanged = onItemsChanged
+        setHasStableIds(true)
+    }
+
+    override fun itemKey(item: VideoModel): String {
+        return when {
+            item.bvid.isNotBlank() -> "bvid:${item.bvid}"
+            item.aid > 0 -> "aid:${item.aid}"
+            item.cid > 0 -> "cid:${item.cid}"
+            else -> "title:${item.title}|cover:${item.coverUrl}"
+        }
+    }
+
+    override fun coverUrlOf(item: VideoModel): String? {
+        val raw = item.bangumi?.cover?.takeIf { it.isNotBlank() } ?: item.coverUrl
+        return raw.takeIf { it.isNotBlank() }
+    }
+
+    override fun areContentsSame(old: VideoModel, new: VideoModel): Boolean =
+        old.title == new.title &&
+        old.coverUrl == new.coverUrl &&
+        old.viewCount == new.viewCount &&
+        old.danmakuCount == new.danmakuCount &&
+        old.isFollowed == new.isFollowed &&
+        old.isPortrait == new.isPortrait &&
+        old.isChargingExclusive == new.isChargingExclusive &&
+        old.historyProgress == new.historyProgress &&
+        old.durationValue == new.durationValue &&
+        old.authorName == new.authorName &&
+        old.pubDate == new.pubDate &&
+        old.createTime == new.createTime &&
+        old.bangumi == new.bangumi &&
+        old.historyBadge == new.historyBadge &&
+        old.historyBusiness == new.historyBusiness &&
+        old.historyDevice == new.historyDevice &&
+        old.historyRecordKid == new.historyRecordKid &&
+        old.historyViewAt == new.historyViewAt &&
+        old.isSteinsGate == new.isSteinsGate
+
+    enum class DisplayStyle {
+        DEFAULT,
+        HISTORY
+    }
+
+    private var onItemClickListener: ((View, VideoModel) -> Unit)? = null
+
+    override fun getContentItemViewType(position: Int): Int {
+        return contentViewType
+    }
+
+    fun setOnItemClickListener(listener: (View, VideoModel) -> Unit) {
+        onItemClickListener = listener
+    }
+
+
+    override fun onCreateContentViewHolder(parent: ViewGroup, viewType: Int): VideoViewHolder {
+        val views = if (displayStyle == DisplayStyle.HISTORY) {
+            VideoCardPerfLogger.measureInflate("VideoAdapter.history") {
+                VideoLightCardFactory.create(parent, source = "VideoAdapter.history")
+            }
+        } else {
+            VideoCardPerfLogger.measureInflate("VideoAdapter.light") {
+                VideoLightCardFactory.create(parent, source = "VideoAdapter.light")
+            }
+        }
+        itemWidthPx?.let { width ->
+            val layoutParams = views.root.layoutParams
+                ?: androidx.recyclerview.widget.RecyclerView.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+            layoutParams.width = width
+            views.root.layoutParams = layoutParams
+        }
+        val clickLambda: (View, VideoModel) -> Unit = { v, item ->
+            onItemClickListener?.invoke(v, item) ?: onItemClick(item)
+        }
+        return VideoViewHolder(
+            views,
+            displayStyle,
+            clickLambda,
+            titleLines,
+            showOwnerLine,
+            onTopEdgeUp,
+            onBottomEdgeDown,
+            onLeftEdge,
+            onRightEdge,
+            { view, position, hasFocus ->
+                if (hasFocus) {
+                    onItemFocused?.invoke(position)
+                    onItemFocusedWithView?.invoke(view, position)
+                }
+            },
+            { view, position ->
+                onItemFocused?.invoke(position)
+                onItemFocusedWithView?.invoke(view, position)
+            },
+            { video -> removeItems { itemKey(it) == itemKey(video) } },
+            { upName -> removeItems { it.authorName.equals(upName, ignoreCase = true) } },
+            onItemDpad,
+            detectPortraitFromCover,
+            fastFirstScreenCovers,
+            fastFirstScreenCoverCount
+        )
+    }
+
+    override fun onBindContentViewHolder(holder: VideoViewHolder, position: Int) {
+        val video = getItem(position) ?: return
+        val source = if (displayStyle == DisplayStyle.HISTORY) {
+            "VideoAdapter.history"
+        } else {
+            "VideoAdapter.light"
+        }
+        VideoCardPerfLogger.measureBind(source) {
+            holder.bind(video, video.aid == currentPlayingAid, position)
+        }
+    }
+
+    class VideoViewHolder(
+        private val views: VideoCardViews,
+        private val displayStyle: DisplayStyle,
+        private val onItemClick: (View, VideoModel) -> Unit,
+        private val titleLines: Int = 2,
+        private val showOwnerLine: Boolean = true,
+        onTopEdgeUp: (() -> Boolean)?,
+        onBottomEdgeDown: (() -> Boolean)?,
+        onLeftEdge: (() -> Boolean)? = null,
+        onRightEdge: (() -> Boolean)? = null,
+        onFocusChange: ((View, Int, Boolean) -> Unit)? = null,
+        private val onItemInteracted: ((View, Int) -> Unit)? = null,
+        private val onItemDisliked: ((VideoModel) -> Unit)? = null,
+        private val onUpDisliked: ((String) -> Unit)? = null,
+        private val onItemDpad: ((View, Int, KeyEvent) -> Boolean)? = null,
+        private val detectPortraitFromCover: Boolean = true,
+        private val fastFirstScreenCovers: Boolean = false,
+        private val fastFirstScreenCoverCount: Int = 8
+    ) : BaseVideoViewHolder(views.root) {
+
+        private var currentVideo: VideoModel? = null
+        private var titleInPlayingMode = false
+        private var titleColor = 0
+        private val defaultTitleColor: Int = ContextCompat.getColor(views.root.context, R.color.textColor)
+
+        companion object {
+            // 封面的圆角半径来自 dimen，但每个 holder resources 一致，半径也一致；
+            // 用单例缓存避免每个 holder 创建匿名类。第一次访问时通过 resources 把 px 值算出来锁住。
+            @Volatile
+            private var coverOutlineProvider: ViewOutlineProvider? = null
+
+            fun coverOutlineProviderFor(resources: android.content.res.Resources): ViewOutlineProvider {
+                coverOutlineProvider?.let { return it }
+                synchronized(this) {
+                    coverOutlineProvider?.let { return it }
+                    val radius = resources.getDimension(R.dimen.px15)
+                    return object : ViewOutlineProvider() {
+                        override fun getOutline(view: View, outline: Outline) {
+                            outline.setRoundRect(0, 0, view.width, view.height, radius)
+                        }
+                    }.also { coverOutlineProvider = it }
+                }
+            }
+        }
+
+        private val keyListener = View.OnKeyListener { view, keyCode, event ->
+            if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
+                when (event.action) {
+                    KeyEvent.ACTION_DOWN -> {
+                        if (event.repeatCount == 0) {
+                            startLongPress()
+                        }
+                    }
+                    KeyEvent.ACTION_UP -> {
+                        cancelLongPress()
+                    }
+                }
+                false
+            } else {
+                onItemDpad?.invoke(view, keyCode, event) == true
+            }
+        }
+
+        override fun showCardMenu() {
+            cancelLongPress()
+            val video = currentVideo ?: return
+            VideoCardMenuDialog(
+                context = itemView.context,
+                video = video,
+                onDislikeVideo = {
+                    onItemDisliked?.invoke(video)
+                },
+                onDislikeUp = { upName ->
+                    onUpDisliked?.invoke(upName)
+                }
+            ).show()
+        }
+
+        init {
+            views.imageView.clipToOutline = true
+            views.imageView.outlineProvider = coverOutlineProviderFor(views.imageView.resources)
+            views.root.setOnClickListener {
+                if (longPressTriggered) {
+                    longPressTriggered = false
+                    AppLog.w("VideoAdapter", "click blocked by longPressTriggered")
+                    return@setOnClickListener
+                }
+                val position = bindingAdapterPosition
+                if (position != androidx.recyclerview.widget.RecyclerView.NO_POSITION) {
+                    onItemInteracted?.invoke(views.root, position)
+                }
+                if (currentVideo == null) {
+                    AppLog.e("VideoAdapter", "click but currentVideo is null, pos=$position")
+                } else {
+                    AppLog.d("VideoAdapter", "click: pos=$position, bvid=${currentVideo?.bvid}, title=${currentVideo?.title}")
+                }
+                currentVideo?.let { onItemClick(views.root, it) }
+            }
+            @SuppressLint("ClickableViewAccessibility")
+            views.root.setOnTouchListener { _, event ->
+                when(event.action) {
+                    MotionEvent.ACTION_DOWN -> startLongPress()
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> cancelLongPress()
+                }
+                false
+            }
+            VideoCardFocusHelper.bindSidebarExit(
+                view = views.root,
+                onTopEdgeUp = onTopEdgeUp,
+                onBottomEdgeDown = onBottomEdgeDown,
+                onLeftEdge = onLeftEdge,
+                onRightEdge = onRightEdge,
+                handleListDpadDown = false,
+                chainedListener = keyListener
+            )
+            if (onFocusChange != null) {
+                views.root.setOnFocusChangeListener { view, hasFocus ->
+                    onFocusChange.invoke(view, bindingAdapterPosition, hasFocus)
+                }
+            }
+        }
+
+        fun bind(video: VideoModel, isCurrentlyPlaying: Boolean = false, adapterPosition: Int = bindingAdapterPosition) {
+            currentVideo = video
+
+            val title = resolveDisplayTitle(video)
+            if (isCurrentlyPlaying) {
+                titleInPlayingMode = true
+                val accentColor = ContextCompat.getColor(views.root.context, R.color.colorAccent)
+                views.textLayer.setTitle(title, lines = titleLines, isPlaying = true, color = accentColor)
+            } else {
+                titleInPlayingMode = false
+                views.textLayer.setTitle(title, lines = titleLines, isPlaying = false, color = defaultTitleColor)
+            }
+            when (displayStyle) {
+                DisplayStyle.DEFAULT -> bindDefault(video)
+                DisplayStyle.HISTORY -> bindHistory(video)
+            }
+
+            val coverUrl = resolveCoverUrl(video)
+            val cachedPortrait = video.bvid.isNotBlank() && video.bvid in portraitDetectedBvids
+            val needPortraitDetect = detectPortraitFromCover &&
+                displayStyle == DisplayStyle.DEFAULT &&
+                !video.isPortrait && !cachedPortrait
+            val portraitCallback = if (needPortraitDetect) { isPortrait: Boolean ->
+                if (bindingAdapterPosition != androidx.recyclerview.widget.RecyclerView.NO_POSITION
+                    && currentVideo === video && isPortrait
+                ) {
+                    if (video.bvid.isNotBlank()) portraitDetectedBvids.add(video.bvid)
+                    val portraitVideo = video.copy(dimension = Dimension(width = 1, height = 2))
+                    views.textLayer.setOwner(
+                        ownerText = buildOwnerLine(portraitVideo),
+                        showAvatar = false,
+                        badgeText = badgeTextFor(portraitVideo)
+                    )
+                }
+            } else null
+
+            ImageLoader.loadVideoCover(
+                imageView = views.imageView,
+                url = coverUrl,
+                priority = if (fastFirstScreenCovers && adapterPosition >= fastFirstScreenCoverCount) {
+                    ImageLoader.Priority.NORMAL
+                } else {
+                    ImageLoader.Priority.VISIBLE_HIGH
+                },
+                deferUntilPreDraw = true,
+                onPortraitDetected = portraitCallback
+            )
+        }
+
+        private fun bindDefault(video: VideoModel) {
+            views.textLayer.clearHistoryTrailing()
+
+            if (!showOwnerLine) {
+                // 紧凑卡片（如播放结束推荐页）：不设 owner 内容，文字层测量时该行高度归零
+                views.textLayer.setOwner(ownerText = "", showAvatar = false)
+            } else {
+                val ownerName = video.authorName
+                val publishLabel = TimeUtils.formatRelativeTime(views.root.context, if (video.pubDate > 0) video.pubDate else video.createTime)
+                views.textLayer.setOwner(
+                    ownerText = buildOwnerLine(ownerName, publishLabel),
+                    showAvatar = ownerName.isNotBlank() && !video.isPortrait,
+                    badgeText = badgeTextFor(video)
+                )
+            }
+
+            val duration = video.durationValue
+            val progress = watchedProgress(video.historyProgress, duration)
+            val durationText: String
+            if (duration > 0 && progress > 0) {
+                views.progressBar.visibility = View.VISIBLE
+                views.progressBar.max = duration.toInt()
+                views.progressBar.progress = progress.coerceAtMost(duration).toInt()
+                durationText = if (isWatchedComplete(progress, duration)) {
+                    views.root.context.getString(R.string.adapter_watched_complete)
+                } else {
+                    views.root.context.getString(
+                        R.string.video_watch_progress_format,
+                        NumberUtils.formatDuration(progress),
+                        NumberUtils.formatDuration(duration)
+                    )
+                }
+            } else {
+                views.progressBar.visibility = View.GONE
+                durationText = NumberUtils.formatDuration(duration.coerceAtLeast(0L))
+            }
+
+            views.coverMetaOverlay.bind(
+                playCountText = views.root.context.let { NumberUtils.formatCount(it, video.viewCount) },
+                showPlayCount = true,
+                danmakuText = views.root.context.let { NumberUtils.formatCount(it, video.danmakuCount) },
+                // 弹幕数为 0 不画弹幕段：直播回放（x/series/archives）接口不返回弹幕数，
+                // 显示固定 "0" 会误导（与搜索页 showDanmakuCount = danmaku > 0 同款降级）
+                showDanmakuCount = video.danmakuCount > 0L,
+                durationText = durationText,
+                showChargeBadge = video.isChargingExclusive,
+                showInteractionBadge = video.isSteinsGate
+            )
+        }
+
+        private fun bindHistory(video: VideoModel) {
+            val ownerName = video.authorName
+            views.textLayer.setOwner(
+                ownerText = ownerName,
+                showAvatar = ownerName.isNotBlank()
+            )
+
+            val duration = video.durationValue
+            val progress = watchedProgress(video.historyProgress, duration)
+            if (duration > 0) {
+                views.progressBar.visibility = View.VISIBLE
+                views.progressBar.max = duration.toInt()
+                views.progressBar.progress = progress.coerceAtMost(duration).toInt()
+            } else {
+                views.progressBar.visibility = View.GONE
+            }
+
+            val durationText = if (video.historyBusiness == "live" && video.historyBadge.isNotBlank()) {
+                video.historyBadge
+            } else if (isWatchedComplete(progress, duration)) {
+                views.root.context.getString(R.string.adapter_watched_complete)
+            } else if (duration > 0) {
+                "${NumberUtils.formatDuration(progress)}/${NumberUtils.formatDuration(duration)}"
+            } else {
+                video.historyBadge
+            }
+            views.textLayer.setHistoryTrailing(
+                timeText = TimeUtils.formatHistoryViewTime(views.root.context, video.historyViewAt),
+                deviceDrawableRes = HistoryDeviceIcon.resolve(video.historyDevice)?.drawableRes ?: 0
+            )
+            views.coverMetaOverlay.bind(
+                showPlayCount = false,
+                showDanmakuCount = false,
+                durationText = durationText,
+                showChargeBadge = video.isChargingExclusive,
+                showInteractionBadge = video.isSteinsGate
+            )
+        }
+
+        private fun buildOwnerLine(video: VideoModel): String =
+            buildOwnerLine(video.authorName, TimeUtils.formatRelativeTime(views.root.context, if (video.pubDate > 0) video.pubDate else video.createTime))
+
+        private fun buildOwnerLine(ownerName: String, publishLabel: String): String = buildString {
+            if (ownerName.isNotBlank()) {
+                append(ownerName)
+            }
+            if (publishLabel.isNotBlank()) {
+                if (isNotEmpty()) {
+                    append(" · ")
+                }
+                append(publishLabel)
+            }
+        }
+
+        private fun badgeTextFor(video: VideoModel): String {
+            // 对齐官方：每卡只显示一个标签。
+            // 已关注/竖屏必显；理由是服务端挑选的（天然稀疏）；
+            // 数值类（百万播放/点赞/投币）本地采样约 25% 显示（aid 确定性采样，刷新不变卦）
+            return when {
+                video.isFollowed -> views.root.context.getString(R.string.followed)
+                video.isPortrait -> views.root.context.getString(R.string.adapter_portrait)
+                video.rcmdReason.isNotBlank() -> video.rcmdReason
+                !isBadgeSampled(video) -> ""
+                (video.viewCount) >= 1_000_000L -> "百万播放"
+                video.like >= 1_000L -> "${milestoneText(video.like)}点赞"
+                video.coinCount >= 1_000L -> "${milestoneText(video.coinCount)}投币"
+                else -> ""
+            }
+        }
+
+        /** 数值类标签采样：aid 稳定散列取约 1/4 的卡，同一卡每次渲染结果一致。 */
+        private fun isBadgeSampled(video: VideoModel): Boolean {
+            val salt = if (video.bvid.isNotBlank()) video.bvid.hashCode() else video.aid.toInt()
+            return (salt and 0xFF) < 64
+        }
+
+        /** 里程碑进位：≥1万 显示整万，≥1千 显示整千（调用方保证 ≥1千）。 */
+        private fun milestoneText(count: Long): String = when {
+            count >= 10_000L -> "${count / 10_000L}万"
+            else -> "${count / 1_000L}千"
+        }
+
+        private fun resolveDisplayTitle(video: VideoModel): String {
+            return video.bangumi?.longTitle?.takeIf { it.isNotBlank() } ?: video.title
+        }
+
+        private fun resolveCoverUrl(video: VideoModel): String {
+            return video.bangumi?.cover?.takeIf { it.isNotBlank() } ?: video.coverUrl
+        }
+
+        private fun watchedProgress(rawProgress: Long, duration: Long): Long {
+            if (duration <= 0L) return 0L
+            return if (rawProgress < 0L) {
+                duration
+            } else {
+                rawProgress.coerceAtMost(duration)
+            }
+        }
+
+        private fun isWatchedComplete(progress: Long, duration: Long): Boolean {
+            // 对齐官方"播满才算看完"：progress 到达 duration 才显示已看完，
+            // 提前 3 秒标记会与官方历史记录（还差 1 秒时官方显示未看完）不一致
+            return duration > 3L && progress >= duration
+        }
+
+        private fun setTitleColor(color: Int) {
+            titleColor = color
+            views.textLayer.setTitleColor(color)
+        }
+    }
+}

@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 播放器：加载/播放错误 -->
+    <string name="player_load_failed">加载失败</string>
+    <string name="player_error_all_routes_unavailable">当前清晰度下所有线路与编码器都不可用</string>
+    <string name="player_error_playback_failed_retry_later">当前清晰度下播放失败，请稍后重试</string>
+    <string name="player_error_init_failed">播放器初始化失败</string>
+    <string name="player_error_related_missing_id">相关推荐缺少视频标识</string>
+    <string name="player_error_continuation_missing_id">连播目标缺少视频标识</string>
+    <string name="player_error_quality_audio_unplayable">当前清晰度/音轨组合不可播放</string>
+    <string name="player_error_cid_invalid">CID 无效</string>
+    <string name="player_error_bvid_invalid">BVID 无效</string>
+    <string name="player_error_play_url_request_failed">播放地址请求失败</string>
+    <string name="player_error_play_url_load_failed">播放地址加载失败</string>
+    <string name="player_error_bangumi_detail_failed">番剧详情加载失败</string>
+    <string name="player_error_no_playable_episode">未找到可播放剧集</string>
+    <string name="player_error_video_detail_failed">视频详情加载失败</string>
+    <string name="player_error_no_playable_page">未找到可播放分P</string>
+
+    <!-- 播放器：风控/青少年模式提示 -->
+    <string name="player_risk_control_requesting_verify">账号被风控，正在请求人机验证…</string>
+    <string name="player_risk_control_try_look_fallback">账号被风控，已降级为试看模式</string>
+    <string name="player_risk_control_hint">账号被风控了，请到设置中完成验证</string>
+    <string name="player_minor_protection_blocked">青少年模式已拦截该视频</string>
+
+    <!-- 播放器：推荐/连播/选集 -->
+    <string name="player_loading_recommendations">加载推荐中...</string>
+    <string name="player_no_recommendation">该视频无推荐</string>
+    <string name="player_repeat_mode_one">单集循环</string>
+    <string name="player_repeat_mode_all">顺序播放</string>
+    <string name="player_no_episodes_toast">当前暂无可选分集</string>
+    <string name="player_collection">合集</string>
+    <string name="player_page_p_format">第 %1$d P</string>
+    <string name="player_total_p_format">共 %1$d P</string>
+
+    <!-- 播放器：信息未加载 -->
+    <string name="player_video_info_not_loaded">当前视频信息未加载完成</string>
+    <string name="player_up_info_not_loaded">UP主信息未加载完成</string>
+
+    <!-- 播放器：字幕 -->
+    <string name="player_subtitle_unknown">未知</string>
+    <string name="player_subtitle_unavailable">不可用</string>
+
+    <!-- 播放器：空降助手（跳过片段） -->
+    <string name="player_skip_segment_toast_format">已跳过：%1$s</string>
+    <string name="player_mute_segment_toast_format">已静音：%1$s</string>
+    <string name="player_sponsor_category_sponsor">赞助/恰饭</string>
+    <string name="player_sponsor_category_intro">过场/开场动画</string>
+    <!-- 官方片头片尾（pgc playurl clip_info_list），区别于空降助手社区数据 -->
+    <string name="official_clip_op">片头</string>
+    <string name="official_clip_ed">片尾</string>
+    <string name="player_sponsor_category_outro">鸣谢/结束画面</string>
+    <string name="player_sponsor_category_self_promo">无偿/自我推广</string>
+    <string name="player_sponsor_category_interaction">三连/互动提醒</string>
+    <string name="player_sponsor_category_preview">回顾/概要</string>
+    <string name="player_sponsor_category_music_offtopic">音乐:非音乐部分</string>
+    <string name="player_sponsor_category_poi_highlight">精彩时刻/重点</string>
+    <string name="player_sponsor_category_filler">离题闲聊/玩笑</string>
+    <string name="player_sponsor_category_padding">内容填充</string>
+    <string name="player_sponsor_category_exclusive_access">付费/专属内容</string>
+    <string name="player_sponsor_error_connection">空降助手连接失败，请检查网络</string>
+    <string name="player_sponsor_service_error_format">空降助手服务异常 (%1$d)</string>
+    <string name="player_sponsor_test_failed">空降助手测试失败</string>
+    <string name="player_sponsor_test_api_error_format">测试失败：API 返回 %1$d</string>
+    <string name="player_sponsor_test_empty_response">测试失败：响应为空</string>
+    <string name="player_sponsor_test_pass_segments_format">测试通过：解析正常，获取到 %1$d 个片段</string>
+    <string name="player_sponsor_test_pass_no_data">测试通过：连接和解析正常（当前无测试数据）</string>
+    <string name="player_sponsor_test_error_message_format">测试失败：%1$s</string>
+
+    <!-- 播放器：画质显示名（存储值 → 本地化显示，经 SettingLabels 映射） -->
+
+    <!-- 播放器：头部信息与播放数 -->
+    <string name="player_view_count_play_format">%1$s播放</string>
+
+    <!-- 播放器：调试浮层 -->
+
+    <!-- 直播 -->
+    <string name="live_toast_refreshing">正在刷新</string>
+    <string name="live_streaming_duration_format">直播中：%1$s</string>
+    <string name="live_error_no_stream_url">无法获取直播流地址</string>
+    <string name="live_error_load_failed">加载直播失败</string>
+    <string name="live_line_fallback_name_format">线路%1$d</string>
+    <string name="live_error_switch_quality_failed">切换画质失败</string>
+    <string name="live_refresh_success">刷新成功</string>
+    <string name="live_error_refresh_failed">刷新直播失败</string>
+    <string name="live_error_retry_failed">重试失败</string>
+    <string name="live_login">登录</string>
+
+    <!-- 央视直播 -->
+    <string name="cctv_official_live_desc">央视官方直播</string>
+    <string name="live_error_room_info_failed">直播间信息获取失败</string>
+    <string name="live_error_room_not_living">当前直播间未开播</string>
+    <string name="live_error_ip_info_failed">获取IP信息失败</string>
+    <string name="live_error_heartbeat_key_failed">获取心跳密钥失败</string>
+    <string name="live_error_room_user_state_failed">获取房间用户状态失败</string>
+    <string name="live_error_history_danmaku_failed">获取历史弹幕失败</string>
+    <string name="live_error_heartbeat_failed">直播心跳失败</string>
+    <string name="series_error_follow_status_failed">获取追番状态失败</string>
+    <string name="series_error_follow_failed">追番失败</string>
+    <string name="series_error_unfollow_failed">取消追番失败</string>
+    <string name="series_error_timeline_failed">时间线加载失败</string>
+    <string name="series_error_recommend_failed">推荐加载失败</string>
+    <string name="player_hdr_unsupported_hint">电视或播放设备可能不支持「%1$s」，若播放异常请切回其他画质</string>
+    <string name="player_audio_track_silent_hint">设备不支持「%1$s」解码，已保持当前音轨</string>
+    <string name="player_quality_switching_hint">正在为您切换到「%1$s」，请稍候…</string>
+    <string name="player_quality_switched_hint">已切换至「%1$s」</string>
+
+    <!-- 同时观看人数 / Online watching count -->
+    <string name="online_watching_format">%1$s人正在看</string>
+
+    <!-- 视频评论 / Video comments -->
+    <string name="player_comment_title">评论</string>
+    <string name="player_comment_title_with_count_format">评论(%1$s)</string>
+    <string name="player_comment_sort_hot">热门</string>
+    <string name="player_comment_sort_new">最新</string>
+    <string name="player_comment_loading">加载中…</string>
+    <string name="player_comment_empty">暂无评论</string>
+    <string name="player_comment_load_failed">评论加载失败</string>
+    <string name="player_comment_thread_empty">暂无回复</string>
+    <string name="player_comment_thread_title">评论详情</string>
+    <string name="player_comment_thread_section">相关回复</string>
+    <string name="player_comment_thread_section_format">相关回复共%1$s条</string>
+    <string name="player_comment_level_accessibility">用户等级 %1$d</string>
+    <string name="player_comment_level_senior_accessibility">硬核会员，用户等级 %1$d</string>
+    <string name="player_comment_note_tag">笔记</string>
+    <string name="player_comment_up_liked">UP主觉得很赞</string>
+    <string name="player_comment_top_tag">置顶</string>
+    <string name="player_comment_no_aid">视频信息未加载</string>
+    <string name="player_comment_expand">展开</string>
+    <string name="player_comment_collapse">收起</string>
+    <string name="player_comment_view_all_replies_format">查看全部 %1$s 条回复</string>
+    <string name="player_comment_view_all_replies_long_press_format">长按查看全部 %1$s 条回复</string>
+    <string name="player_comment_note_image_loading">加载图片中…</string>
+</resources>

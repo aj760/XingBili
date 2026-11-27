@@ -1,0 +1,12 @@
+[
+    { "prefix": "https://tv.cctv.com/live", "path": "tv/cctv" },
+    { "prefix": "https://www.yangshipin.cn", "path": "tv/ysptv" },
+    { "prefix": "https://live.jstv.com", "path": "tv/jstv" },
+    { "prefix": "https://www.btime.com", "path": "tv/bjtv" },
+    { "prefix": "https://www.jlntv.cn/", "path": "tv/jltv" },
+    { "prefix": "https://www.lcxw.cn/", "path": "tv/lctv", "preload": "https://cdn.bootcdn.net/ajax/libs/hls.js/1.5.13/hls.js" },
+    { "prefix": "https://www.fengshows.com/", "path": "tv/fengshows" },
+    { "prefix": "https://www.nmtv.cn", "path": "tv/nmtv" },
+    { "prefix": "https://www.mgtv.com/live", "path": "tv/hntv" },
+    { "prefix": "https://web.guangdianyun.tv", "path": "tv/gdytv" }
+]

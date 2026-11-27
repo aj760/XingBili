@@ -1,0 +1,151 @@
+package com.mytvb.model.video
+
+import com.google.gson.annotations.SerializedName
+import com.mytvb.model.favorite.FolderStatModel
+import java.io.Serializable
+
+data class HistoryVideoModel(
+    @SerializedName("title")
+    val title: String = "",
+    @SerializedName("long_title")
+    val longTitle: String = "",
+    @SerializedName("bvid")
+    val bvid: String = "",
+    @SerializedName("cover")
+    val cover: String = "",
+    @SerializedName("covers")
+    val covers: List<String>? = null,
+    @SerializedName("uri")
+    val uri: String = "",
+    @SerializedName("history")
+    val history: HistoryModel? = null,
+    @SerializedName("videos")
+    val videos: Int = 0,
+    @SerializedName("author_name")
+    val authorName: String = "",
+    @SerializedName("author_face")
+    val authorFace: String = "",
+    @SerializedName("author_mid")
+    val authorMid: String = "",
+    @SerializedName("upper")
+    val upper: Owner? = null,
+    @SerializedName("view_at")
+    val viewAt: Long = 0,
+    @SerializedName("progress")
+    val progress: Long = 0,
+    @SerializedName("badge")
+    val badge: String = "",
+    @SerializedName("show_title")
+    val showTitle: String = "",
+    @SerializedName("duration")
+    val duration: Long = 0,
+    @SerializedName("total")
+    val total: Int = 0,
+    @SerializedName("new_desc")
+    val newDesc: String = "",
+    @SerializedName("is_finish")
+    val isFinish: Int = 0,
+    @SerializedName("is_fav")
+    val isFav: Int = 0,
+    @SerializedName(value = "kid", alternate = ["id"])
+    val kid: Long = 0,
+    @SerializedName("tag_name")
+    val tagName: String = "",
+    @SerializedName("fav_time")
+    val favTime: Long = 0,
+    @SerializedName("live_status")
+    val liveStatus: Int = 0,
+    @SerializedName("cnt_info")
+    val cntInfo: FolderStatModel? = null,
+
+    @SerializedName("is_upower_exclusive")
+    val isUpowerExclusive: Boolean = false,
+
+    @SerializedName("is_charging_arc")
+    val isChargingArc: Boolean = false,
+
+    @SerializedName("privilege_type")
+    val privilegeType: Int = 0,
+
+    @SerializedName("elec_arc_type")
+    val elecArcType: Int = 0,
+
+    @SerializedName("elec_arc_badge")
+    val elecArcBadge: String = "",
+
+    @SerializedName("rights")
+    val rights: HistoryVideoRights? = null,
+
+    @SerializedName("dimension")
+    val dimension: Dimension? = null,
+
+    @SerializedName("is_steins_gate")
+    val isSteinsGate: Boolean = false
+) : Serializable {
+    val isChargingExclusive: Boolean
+        get() = isUpowerExclusive || privilegeType > 0 || isChargingArc
+                || elecArcType == 1 || elecArcBadge == "充电专属"
+    val isPortrait: Boolean
+        get() = dimension?.isPortrait == true
+    val displayAuthorName: String
+        get() = authorName.ifBlank { upper?.name.orEmpty() }
+    val displayAuthorFace: String
+        get() = authorFace.ifBlank { upper?.face.orEmpty() }
+    val displayAuthorMid: Long
+        get() = authorMid.toLongOrNull() ?: upper?.mid ?: 0L
+    fun toVideoModel(): VideoModel {
+        val historyInfo = history
+        val aid = historyInfo?.oid ?: kid
+        val cid = historyInfo?.cid ?: 0L
+        val mappedBvid = historyInfo?.bvid?.ifEmpty { bvid } ?: bvid
+        val model = VideoModel(
+            aid = aid,
+            bvid = mappedBvid,
+            title = title.ifEmpty { showTitle },
+            pic = cover,
+            duration = duration,
+            cid = cid,
+            epid = historyInfo?.epid ?: 0L,
+            redirectUrl = uri,
+            owner = Owner(
+                mid = displayAuthorMid,
+                name = displayAuthorName,
+                face = displayAuthorFace
+            ),
+            historyProgress = progress,
+            historyViewAt = viewAt,
+            historyBadge = badge,
+            historyBusiness = historyInfo?.business.orEmpty(),
+            historyDevice = historyInfo?.dt ?: 0,
+            historyRecordKid = resolveHistoryRecordKid(),
+            isUpowerExclusive = isUpowerExclusive,
+            isChargingArc = isChargingArc,
+            elecArcType = elecArcType,
+            elecArcBadge = elecArcBadge,
+            privilegeType = privilegeType
+        )
+        return model
+    }
+
+    fun resolveHistoryRecordKid(): String {
+        val business = history?.business.orEmpty()
+        val id = when (business) {
+            "archive", "live" -> history?.oid?.takeIf { it > 0L } ?: kid
+            "pgc" -> kid.takeIf { it > 0L } ?: history?.epid ?: history?.oid ?: 0L
+            "article", "article-list" -> kid.takeIf { it > 0L } ?: history?.oid ?: 0L
+            else -> kid.takeIf { it > 0L } ?: history?.oid ?: 0L
+        }
+        return if (business.isNotBlank() && id > 0L) {
+            "${business}_${id}"
+        } else {
+            ""
+        }
+    }
+}
+
+data class HistoryVideoRights(
+    @SerializedName("autoplay")
+    val autoplay: Int = 1,
+    @SerializedName("elec")
+    val elec: Int = 0
+)

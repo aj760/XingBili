@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MyTVB 日志</title>
+<style>
+  :root {
+    --bg: #0f1115; --card: #1a1d24; --card2: #22262f;
+    --text: #e6e8ec; --text2: #9aa0ab; --line: #2c313c;
+    --pink: #fb7299; --blue: #5aa9f8; --green: #6bd68a;
+    --warn: #f5c65b; --err: #f0716a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.6 -apple-system, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 18px; margin: 4px 0 16px; }
+  h1 .dot { color: var(--pink); }
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 12px; padding: 14px 16px; margin-bottom: 14px;
+  }
+  .card h2 { font-size: 15px; margin: 0 0 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .kv { display: flex; gap: 18px; flex-wrap: wrap; color: var(--text2); font-size: 13px; }
+  .kv b { color: var(--text); font-weight: 600; }
+  .badge { font-size: 12px; padding: 1px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--text2); }
+  .badge.on { color: var(--green); border-color: var(--green); }
+  .badge.off { color: var(--warn); border-color: var(--warn); }
+  .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  button, select, input[type=text] {
+    background: var(--card2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 8px; padding: 5px 12px; font-size: 13px; outline: none;
+  }
+  button { cursor: pointer; }
+  button:active { transform: scale(.97); }
+  button.primary { background: var(--pink); border-color: var(--pink); color: #fff; font-weight: 600; }
+  input[type=text] { width: 130px; }
+  label.chk { display: inline-flex; align-items: center; gap: 6px; color: var(--text2); font-size: 13px; cursor: pointer; }
+  #logView {
+    background: #0b0d10; border: 1px solid var(--line); border-radius: 8px;
+    padding: 10px 12px; height: 46vh; overflow: auto;
+    font: 12px/1.55 ui-monospace, Consolas, "Courier New", monospace;
+    white-space: pre-wrap; word-break: break-all; margin-top: 10px;
+  }
+  .lv { display: inline-block; width: 16px; font-weight: 700; }
+  .lv.D { color: var(--blue); } .lv.I { color: var(--green); }
+  .lv.W { color: var(--warn); } .lv.E { color: var(--err); } .lv.V { color: var(--text2); }
+  .tg { color: var(--pink); }
+  .ts { color: var(--text2); }
+  /* fixed 布局：文件名单行跑马灯，其余列 nowrap，任何屏宽不折行不出框 */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
+  td, th { padding: 7px 8px; border-bottom: 1px solid var(--line); text-align: left; }
+  th { color: var(--text2); font-weight: 500; }
+  th:nth-child(2) { width: 88px; }
+  th:nth-child(3) { width: 96px; }
+  th:nth-child(4) { width: 66px; }
+  td.num { color: var(--text2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td.act { white-space: normal; }
+  /* 文件名跑马灯：溢出时 JS 加 .run，来回循环滚动（hover 暂停） */
+  .fname { overflow: hidden; white-space: nowrap; }
+  .fname span { display: inline-block; }
+  .fname.run span { animation: mq 7s linear infinite; }
+  .fname.run:hover span { animation-play-state: paused; }
+  @keyframes mq {
+    0%, 12% { transform: translateX(0); }
+    55%, 72% { transform: translateX(var(--shift, -40px)); }
+    100% { transform: translateX(0); }
+  }
+  a.btn {
+    display: inline-block; background: var(--card2); color: var(--text);
+    border: 1px solid var(--line); border-radius: 8px; padding: 3px 10px;
+    font-size: 12px; line-height: 1.5; text-decoration: none; cursor: pointer;
+  }
+  a.btn:active { transform: scale(.97); }
+  .empty { color: var(--text2); padding: 10px 0; }
+  #overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.72); display: none;
+    align-items: center; justify-content: center; padding: 24px; z-index: 9;
+  }
+  #overlay .box {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    width: min(860px, 100%); max-height: 86vh; display: flex; flex-direction: column;
+  }
+  #overlay header { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  #overlay pre {
+    margin: 0; padding: 12px 14px; overflow: auto; flex: 1;
+    font: 12px/1.55 ui-monospace, Consolas, monospace; white-space: pre-wrap; word-break: break-all;
+  }
+  .error-tip { color: var(--err); }
+  footer { text-align: center; color: var(--text2); font-size: 12px; padding: 10px 0 22px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>MyTVB <span class="dot">·</span> 局域网日志</h1>
+
+  <div class="card">
+    <h2>设备状态 <span id="stateBadge" class="badge">加载中…</span></h2>
+    <div class="kv" id="statusKv"></div>
+  </div>
+
+  <div class="card">
+    <h2>
+      实时日志
+      <span class="toolbar">
+        <select id="levelFilter">
+          <option value="">ALL</option><option>V</option><option>D</option>
+          <option>I</option><option>W</option><option>E</option>
+        </select>
+        <input type="text" id="tagFilter" placeholder="Tag 过滤">
+        <label class="chk"><input type="checkbox" id="autoRefresh" checked>自动刷新</label>
+        <button id="btnRefresh">刷新</button>
+      </span>
+    </h2>
+    <div id="logView" class="empty">暂无日志</div>
+  </div>
+
+  <div class="card">
+    <h2>
+      崩溃日志
+      <span class="toolbar"><button id="btnReloadFiles">刷新列表</button></span>
+    </h2>
+    <table id="crashTable"><thead><tr><th>文件</th><th>大小</th><th>时间</th><th></th></tr></thead><tbody></tbody></table>
+    <div id="crashEmpty" class="empty">暂无崩溃记录</div>
+  </div>
+
+  <div class="card">
+    <h2>
+      日志快照
+      <span class="toolbar">
+        <button class="primary" id="btnCreateSnapshot">生成快照并下载</button>
+      </span>
+    </h2>
+    <table id="snapTable"><thead><tr><th>文件</th><th>大小</th><th>时间</th><th></th></tr></thead><tbody></table>
+    <div id="snapEmpty" class="empty">暂无快照，点右上角生成</div>
+  </div>
+
+  <footer>局域网直连 · 离开电视端页面服务器即关闭</footer>
+</div>
+
+<div id="overlay">
+  <div class="box">
+    <header><b id="ovTitle"></b><button id="ovClose">关闭</button></header>
+    <pre id="ovPre"></pre>
+  </div>
+</div>
+
+<script>
+(function () {
+  var qs = new URLSearchParams(location.search);
+  var token = qs.get('t') || '';
+  var $ = function (id) { return document.getElementById(id); };
+  function api(path) { return path + (path.indexOf('?') >= 0 ? '&' : '?') + 't=' + encodeURIComponent(token); }
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function fmtSize(n) {
+    if (n > 1048576) return (n / 1048576).toFixed(1) + ' MB';
+    if (n > 1024) return (n / 1024).toFixed(1) + ' KB';
+    return n + ' B';
+  }
+  function fmtTime(ms) {
+    if (!ms) return '-';
+    var d = new Date(ms);
+    function p(x) { return x < 10 ? '0' + x : x; }
+    var core = p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' +
+      p(d.getHours()) + ':' + p(d.getMinutes());
+    // 窄屏再省掉秒给文件名列腾地方（时间列 nowrap 不折行）
+    return window.innerWidth < 600 ? core : d.getFullYear() + '-' + core + ':' + p(d.getSeconds());
+  }
+
+  // ── 状态卡 ──────────────────────────────────────────────
+  function loadStatus() {
+    fetch(api('/api/status')).then(function (r) {
+      if (!r.ok) throw new Error('http ' + r.status);
+      return r.json();
+    }).then(function (s) {
+      var badge = $('stateBadge');
+      badge.textContent = s.logEnabled ? '日志记录已开启' : '日志记录未开启';
+      badge.className = 'badge ' + (s.logEnabled ? 'on' : 'off');
+      $('statusKv').innerHTML =
+        '<span>设备 <b>' + esc(s.device) + '</b></span>' +
+        '<span>Android <b>' + esc(s.android) + '</b></span>' +
+        '<span>版本 <b>v' + esc(s.versionName) + '</b></span>' +
+        '<span>缓冲 <b>' + s.bufferCount + '</b> 条</span>';
+    }).catch(function (e) {
+      $('stateBadge').textContent = '连接失败';
+      $('stateBadge').className = 'badge off';
+      $('statusKv').innerHTML = '<span class="error-tip">无法访问日志接口：请使用电视端「局域网日志」页展示的完整地址（含 ?t=xxx）访问</span>';
+    });
+  }
+
+  // ── 实时日志 ────────────────────────────────────────────
+  var lastEntries = [];
+  function renderLogs() {
+    var lv = $('levelFilter').value;
+    var tag = $('tagFilter').value.trim().toLowerCase();
+    var view = $('logView');
+    var atBottom = view.scrollTop + view.clientHeight >= view.scrollHeight - 30;
+    var html = [];
+    lastEntries.forEach(function (e) {
+      if (lv && e.level !== lv) return;
+      if (tag && e.tag.toLowerCase().indexOf(tag) < 0) return;
+      html.push('<span class="ts">' + esc(e.time) + '</span> ' +
+        '<span class="lv ' + esc(e.level) + '">' + esc(e.level) + '</span> ' +
+        '<span class="tg">' + esc(e.tag) + '</span>: ' + esc(e.message));
+    });
+    view.innerHTML = html.length ? html.join('\n') : '<div class="empty">暂无日志（检查电视端「日志记录」是否开启）</div>';
+    if (atBottom) view.scrollTop = view.scrollHeight;
+  }
+  function loadLogs() {
+    fetch(api('/api/logs/current')).then(function (r) { return r.json(); }).then(function (d) {
+      lastEntries = d.entries || [];
+      renderLogs();
+    }).catch(function () {});
+  }
+
+  // ── 文件列表 ────────────────────────────────────────────
+  function fileRow(f, type) {
+    var dl = ' <a class="btn" download href="' + api('/api/files/download?type=' + type + '&name=' + encodeURIComponent(f.name)) + '">下载</a>';
+    var view = type === 'crash' ? ' <a class="btn" data-name="' + esc(f.name) + '">查看</a>' : '';
+    return '<tr><td><div class="fname"><span>' + esc(f.name) + '</span></div></td>' +
+      '<td class="num">' + fmtSize(f.size) + '</td>' +
+      '<td class="num">' + fmtTime(f.lastModified) + '</td>' +
+      '<td class="act">' + view + dl + '</td></tr>';
+  }
+  // 渲染后检测文件名溢出，溢出的加 .run 跑马灯（--shift 为溢出量，留 8px 余量露全尾巴）
+  function setupMarquee() {
+    document.querySelectorAll('.fname').forEach(function (el) {
+      var t = el.querySelector('span');
+      var overflow = t.scrollWidth - el.clientWidth;
+      if (overflow > 4) {
+        el.style.setProperty('--shift', -(overflow + 8) + 'px');
+        el.classList.add('run');
+      }
+    });
+  }
+  function loadFiles() {
+    fetch(api('/api/files/list')).then(function (r) { return r.json(); }).then(function (d) {
+      var crash = d.crash || [], snap = d.snapshot || [];
+      $('crashTable').querySelector('tbody').innerHTML = crash.map(function (f) { return fileRow(f, 'crash'); }).join('');
+      $('crashEmpty').style.display = crash.length ? 'none' : '';
+      $('snapTable').querySelector('tbody').innerHTML = snap.map(function (f) { return fileRow(f, 'snapshot'); }).join('');
+      $('snapEmpty').style.display = snap.length ? 'none' : '';
+      $('crashTable').querySelector('tbody').addEventListener('click', function (ev) {
+        var a = ev.target.closest('a[data-name]');
+        if (!a) return;
+        viewCrash(a.getAttribute('data-name'));
+      });
+      setupMarquee();
+    }).catch(function () {});
+  }
+  function viewCrash(name) {
+    fetch(api('/api/files/download?type=crash&name=' + encodeURIComponent(name)))
+      .then(function (r) { return r.text(); })
+      .then(function (text) {
+        $('ovTitle').textContent = name;
+        $('ovPre').textContent = text;
+        $('overlay').style.display = 'flex';
+      });
+  }
+  $('ovClose').onclick = function () { $('overlay').style.display = 'none'; };
+  $('overlay').onclick = function (ev) { if (ev.target === this) this.style.display = 'none'; };
+
+  // ── 事件绑定 ────────────────────────────────────────────
+  $('btnRefresh').onclick = function () { loadLogs(); loadStatus(); };
+  $('levelFilter').onchange = renderLogs;
+  $('tagFilter').oninput = renderLogs;
+  $('btnReloadFiles').onclick = loadFiles;
+  // fetch 一次拉完再落地，不走 location.href：手机浏览器对 attachment 常是
+  // WebView 探测 + 下载器重发两次请求，服务端会落成对快照文件
+  $('btnCreateSnapshot').onclick = function () {
+    var btn = this;
+    if (!(window.Blob && window.URL && URL.createObjectURL)) {
+      location.href = api('/api/snapshot/create-and-download');
+      return;
+    }
+    btn.disabled = true;
+    fetch(api('/api/snapshot/create-and-download')).then(function (r) {
+      if (!r.ok) throw new Error('http ' + r.status);
+      var m = (r.headers.get('Content-Disposition') || '').match(/filename="([^"]+)"/);
+      var name = m ? m[1] : 'mytvb_log.txt';
+      return r.blob().then(function (b) { return { name: name, blob: b }; });
+    }).then(function (f) {
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(f.blob);
+      a.download = f.name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+      loadFiles();
+    }).catch(function (e) {
+      alert('生成快照失败：' + e.message);
+    }).then(function () { btn.disabled = false; });
+  };
+
+  setInterval(function () {
+    if ($('autoRefresh').checked) loadLogs();
+  }, 2000);
+
+  loadStatus(); loadLogs(); loadFiles();
+  setInterval(loadStatus, 10000);
+})();
+</script>
+</body>
+</html>

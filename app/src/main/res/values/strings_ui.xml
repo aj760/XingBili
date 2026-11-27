@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ===== dialog：操作弹窗（PlayerActionDialog / VideoCardMenuDialog / OwnerDetailDialog / UserInfoDialog） ===== -->
+    <string name="dialog_action_failed">操作失败</string>
+    <string name="dialog_action_failed_retry_later">操作失败，请稍后重试</string>
+    <string name="dialog_coin_success">投币成功</string>
+    <string name="dialog_favorite_folder_not_loaded">收藏夹信息未加载完成</string>
+    <string name="dialog_no_available_favorite_folder">暂无可用收藏夹</string>
+    <string name="dialog_load_favorite_folder_failed">加载收藏夹失败</string>
+    <string name="dialog_favorited_to_format">已收藏到 %1$s</string>
+    <string name="dialog_unfavorited_from_format">已从 %1$s 取消收藏</string>
+    <string name="dialog_unfavorite">取消收藏</string>
+    <string name="dialog_triple_success_risk_marked">三连成功，但账号被标记风控，后续操作可能受限</string>
+    <string name="dialog_risk_control_verify_hint">账号被风控了，请到B站官方App或网页端完成验证后再试</string>
+    <string name="dialog_credential_error_retry_later">登录凭据异常，请稍后重试</string>
+    <string name="dialog_up_info_not_loaded">UP主信息未加载完成</string>
+    <string name="dialog_load_failed">加载失败</string>
+    <string name="dialog_follow_success">关注成功</string>
+    <string name="dialog_unfollowed">已取消关注</string>
+    <string name="dialog_normal_member">普通会员</string>
+
+    <!-- ===== adapter：列表项绑定文本 ===== -->
+    <string name="adapter_watched_complete">已看完</string>
+    <string name="adapter_live_streaming">直播中</string>
+    <string name="adapter_live_not_started">未开播</string>
+    <string name="adapter_portrait">竖屏</string>
+    <string name="adapter_favorited_at_format">收藏于%1$s</string>
+    <string name="adapter_default_sign">这个人很懒，什么都没写</string>
+    <string name="adapter_published_at_format">发布于：%1$s</string>
+    <string name="adapter_stat_view_format">%1$s播放</string>
+    <string name="adapter_stat_danmaku_format">%1$s弹幕</string>
+    <string name="adapter_stat_like_format">%1$s点赞</string>
+    <string name="adapter_stat_coin_format">%1$s投币</string>
+    <string name="adapter_stat_favorite_format">%1$s收藏</string>
+    <string name="adapter_description_format">简介：%1$s</string>
+    <string name="adapter_triple_hint">长按点赞可一键三连</string>
+    <string name="adapter_fans_count_format">%1$s粉丝</string>
+    <string name="adapter_sort_ascending">↑ 升序</string>
+    <string name="adapter_sort_descending">↓ 降序</string>
+    <string name="adapter_current_selection">当前</string>
+    <string name="adapter_rating_format">评分 %1$s</string>
+    <string name="adapter_chase_count_format">%1$s %2$s</string>
+    <string name="adapter_play_count_format">%1$s 播放</string>
+    <string name="adapter_danmaku_count_format">%1$s 弹幕</string>
+    <string name="adapter_episode_unit_anime">话</string>
+    <string name="adapter_episode_unit_drama">集</string>
+    <string name="adapter_series_finished_total_format">已完结，全%1$d%2$s</string>
+    <string name="adapter_series_ongoing_format">连载中，%1$s</string>
+    <string name="adapter_series_ongoing_updated_format">连载中，更新至第%1$d%2$s</string>
+    <string name="adapter_series_updated_format">更新至第%1$d%2$s</string>
+    <string name="adapter_related_series">相关系列</string>
+    <string name="adapter_related_series_format">%1$s 相关系列</string>
+
+    <!-- ===== activity：各播放/直播/验证页面提示 ===== -->
+    <string name="activity_risk_control_settings_hint">账号被风控了，请到设置中完成验证</string>
+    <string name="activity_preview_ended_hint">试看片段已结束，完整观看本集需要大会员或登录</string>
+    <string name="activity_preview_start_hint">本集为试看片段（约1分钟），完整观看需要大会员或登录</string>
+    <string name="activity_teen_mode_blocked_video">青少年模式已拦截该视频</string>
+    <string name="activity_teen_rest_banner">请关闭电视注意休息</string>
+    <string name="activity_teen_rest_needed_format">请关闭电视注意休息，还需休息 %1$d 分钟</string>
+    <string name="activity_repeat_one">单集循环</string>
+    <string name="activity_repeat_all">顺序播放</string>
+    <string name="activity_exit_player_hint">再按一次退出播放</string>
+    <string name="activity_exit_live_hint">再按一次退出直播</string>
+    <string name="activity_sponsor_skipped_format">已跳过: %1$s</string>
+    <string name="activity_web_load_failed_format">网页加载失败 %1$d</string>
+    <string name="activity_web_ssl_error">网页证书错误</string>
+    <string name="activity_player_load_timeout">播放器加载超时</string>
+    <string name="activity_player_buffer_timeout">播放器缓冲超时</string>
+    <string name="activity_quality_downgraded_format">已降级到 %1$s</string>
+    <string name="activity_cctv_script_update_failed">央视播放器脚本更新失败</string>
+    <string name="activity_channel_load_failed">频道数据加载失败</string>
+    <string name="activity_channel_loading">频道数据加载中...</string>
+    <string name="activity_no_cctv_channels">无 CCTV 频道数据</string>
+    <string name="activity_no_channels">无频道数据</string>
+    <string name="activity_no_quality_options">当前频道暂无画质选项</string>
+    <string name="activity_remote_switch_channel_tip">已支持遥控器上下左右可快速切台</string>
+    <string name="activity_initializing">正在初始化…</string>
+    <string name="cctv_stage_resolving">正在解析频道…</string>
+    <string name="cctv_stage_connecting">正在连接视频…</string>
+    <string name="cctv_stage_buffering">正在缓冲…</string>
+    <string name="activity_loading_web">正在加载网页…</string>
+    <string name="activity_loading_video">正在加载视频…</string>
+    <string name="activity_verifying_request">正在请求验证…</string>
+    <string name="activity_verify_waiting">请完成验证…</string>
+    <string name="activity_verify_success_submitting">验证成功，正在提交…</string>
+    <string name="activity_geetest_title">人机验证</string>
+    <string name="activity_geetest_start">开始验证</string>
+    <string name="activity_geetest_load_failed">加载验证码脚本失败，请检查网络</string>
+
+    <!-- ===== model：画质/音轨/分区/排序显示名 ===== -->
+    <string name="quality_8k">8K 超高清</string>
+    <string name="quality_hdr">HDR 真彩</string>
+    <string name="quality_4k">4K 超高清</string>
+    <string name="quality_1080p_60">1080P 60帧</string>
+    <string name="quality_1080p_plus">1080P 高码率</string>
+    <string name="quality_1080p">1080P 高清</string>
+    <string name="quality_720p_60">720P 60帧</string>
+    <string name="quality_720p">720P 准高清</string>
+    <string name="quality_480p">480P 标清</string>
+    <string name="quality_360p">360P 流畅</string>
+    <string name="quality_240p">240P 极速</string>
+    <string name="quality_unknown_format">画质 %1$d</string>
+    <string name="audio_track_unknown_format">音轨 %1$d</string>
+    <string name="model_series_china_anime">国创</string>
+    <string name="model_series_variety">综艺</string>
+    <string name="model_search_order_total_rank">综合排序</string>
+    <string name="model_search_order_click">最多点击</string>
+    <string name="space_order_most_played">最多播放</string>
+    <string name="space_sort_oldest_first">最早发布</string>
+    <string name="model_search_order_pub_date">最新发布</string>
+    <string name="model_search_order_dm">最多弹幕</string>
+    <string name="model_search_order_most_collection">最多收藏</string>
+
+    <!-- ===== core：通用基础设施文案（时间/数字/徽章/青少年模式） ===== -->
+    <string name="core_badge_charge_exclusive">充电专属</string>
+    <string name="core_badge_interaction">互动</string>
+    <string name="core_time_just_now">刚刚</string>
+    <string name="core_time_minutes_ago_format">%1$d分钟前</string>
+    <string name="core_time_hours_ago_format">%1$d小时前</string>
+    <string name="core_time_days_ago_format">%1$d天前</string>
+    <string name="core_time_today_time_format">今天 %1$s</string>
+    <string name="core_time_yesterday_time_format">昨天 %1$s</string>
+    <string name="core_time_day_before_time_format">前天 %1$s</string>
+    <string name="core_count_wan_format">%1$s万</string>
+    <string name="core_count_yi_format">%1$s亿</string>
+    <string name="core_teen_rest_needed_format">请关闭电视注意休息，还需休息 %1$d 分钟</string>
+
+    <!-- ===== x5：X5 内核下载安装进度提示 ===== -->
+    <string name="x5_status_processing">正在处理中...</string>
+    <string name="x5_server_error_format">服务器返回错误: %1$d</string>
+    <string name="x5_downloading_percent_format">下载中 %1$d%%</string>
+    <string name="x5_md5_check_failed">MD5 校验失败</string>
+    <string name="x5_download_failed_format">下载失败: %1$s</string>
+    <string name="x5_installing">安装中...</string>
+    <string name="x5_installed_restart_countdown">✓ X5已安装！3秒后重启...</string>
+    <string name="x5_install_failed_code_format">安装失败(code:%1$d)，点击重试</string>
+    <string name="x5_install_unsupported">安装后 canLoadX5 仍为 false，可能设备不支持</string>
+    <string name="x5_install_error_format">安装异常: %1$s</string>
+
+    <!-- ===== layout 占位/标题 ===== -->
+    <string name="cell_title_placeholder">标题标题标题标题标题标题标题标题标题</string>
+    <string name="cell_fans_placeholder">0粉丝</string>
+    <string name="cell_user_stat_placeholder">0粉丝 · 0个视频</string>
+    <string name="setting_tv_live">电视直播</string>
+    <string name="core_count_k_format">%1$sK</string>
+    <string name="core_count_m_format">%1$sM</string>
+    <string name="core_count_b_format">%1$sB</string>
+    <!-- 数字分级开关：false=万/亿（中文习惯），true=K/M/B（千分位语言，由 values-en 覆盖） -->
+    <bool name="count_scale_thousand">false</bool>
+</resources>

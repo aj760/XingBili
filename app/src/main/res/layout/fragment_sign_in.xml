@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <androidx.appcompat.widget.LinearLayoutCompat
+        android:id="@+id/view_login"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/textView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/scan_sign_in"
+            android:textColor="?android:attr/textColorPrimary"
+            android:textSize="@dimen/px40"
+            android:textStyle="bold" />
+
+        <FrameLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/px30">
+
+            <androidx.appcompat.widget.AppCompatImageView
+                android:id="@+id/imageView"
+                android:layout_width="@dimen/px800"
+                android:layout_height="@dimen/px800"
+                android:background="@drawable/cell_background"
+                android:padding="@dimen/px20"
+                android:scaleType="fitCenter" />
+
+            <ProgressBar
+                android:id="@+id/progressBar"
+                android:layout_width="@dimen/px150"
+                android:layout_height="@dimen/px150"
+                android:layout_gravity="center" />
+
+            <!-- 已扫码待确认覆盖层：默认隐藏。半透明遮罩淡化二维码（官方同款），
+                 白圆底粉色对勾 + 两行提示；纯状态展示无交互，不抢焦点 -->
+            <androidx.appcompat.widget.LinearLayoutCompat
+                android:id="@+id/overlayScanned"
+                android:layout_width="@dimen/px800"
+                android:layout_height="@dimen/px800"
+                android:background="@drawable/qr_scanned_overlay_bg"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <FrameLayout
+                    android:layout_width="@dimen/px150"
+                    android:layout_height="@dimen/px150">
+
+                    <androidx.appcompat.widget.AppCompatImageView
+                        android:layout_width="@dimen/px150"
+                        android:layout_height="@dimen/px150"
+                        android:background="@drawable/qr_scanned_circle_bg"
+                        android:contentDescription="@string/sign_in_qr_scan_success" />
+
+                    <androidx.appcompat.widget.AppCompatImageView
+                        android:layout_width="@dimen/px90"
+                        android:layout_height="@dimen/px90"
+                        android:layout_gravity="center"
+                        android:contentDescription="@null"
+                        app:srcCompat="@drawable/ic_check"
+                        app:tint="@color/pink" />
+                </FrameLayout>
+
+                <androidx.appcompat.widget.AppCompatTextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/px30"
+                    android:text="@string/sign_in_qr_scan_success"
+                    android:textColor="@android:color/white"
+                    android:textSize="@dimen/px34"
+                    android:textStyle="bold" />
+
+                <androidx.appcompat.widget.AppCompatTextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/px10"
+                    android:text="@string/sign_in_qr_confirm_hint"
+                    android:textColor="@android:color/white"
+                    android:textSize="@dimen/px26" />
+            </androidx.appcompat.widget.LinearLayoutCompat>
+
+            <!-- 二维码过期/失败覆盖层：默认隐藏。透明底+紫色描边选择框（焦点指示），
+                 二维码保持完整可见；提示文字收进半透明深色胶囊。
+                 尺寸必须与 imageView 同为 px800：wrap_content 父容器内 match_parent 会退化成文字大小 -->
+            <androidx.appcompat.widget.LinearLayoutCompat
+                android:id="@+id/overlayExpired"
+                android:layout_width="@dimen/px800"
+                android:layout_height="@dimen/px800"
+                android:background="@drawable/qr_expired_overlay_bg"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <androidx.appcompat.widget.LinearLayoutCompat
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/qr_expired_banner_bg"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:paddingStart="@dimen/px30"
+                    android:paddingTop="@dimen/px20"
+                    android:paddingEnd="@dimen/px30"
+                    android:paddingBottom="@dimen/px20">
+
+                    <androidx.appcompat.widget.AppCompatTextView
+                        android:id="@+id/tvExpiredTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/sign_in_qr_expired"
+                        android:textColor="@android:color/white"
+                        android:textSize="@dimen/px34"
+                        android:textStyle="bold" />
+
+                    <androidx.appcompat.widget.AppCompatTextView
+                        android:id="@+id/tvExpiredAction"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/px10"
+                        android:text="@string/sign_in_qr_refresh"
+                        android:textColor="@android:color/white"
+                        android:textSize="@dimen/px26" />
+                </androidx.appcompat.widget.LinearLayoutCompat>
+            </androidx.appcompat.widget.LinearLayoutCompat>
+        </FrameLayout>
+
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/tvCountdown"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/px20"
+            android:textColor="?android:attr/textColorSecondary"
+            android:textSize="@dimen/px26"
+            android:visibility="gone" />
+    </androidx.appcompat.widget.LinearLayoutCompat>
+</androidx.constraintlayout.widget.ConstraintLayout>

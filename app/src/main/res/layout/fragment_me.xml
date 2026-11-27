@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/tabLayout"
+        android:focusable="false"
+        android:clipToPadding="false"
+        android:layout_width="wrap_content"
+        android:layout_height="@dimen/px80"
+        android:layout_marginStart="@dimen/px30"
+        android:layout_marginTop="@dimen/px25"
+        android:layout_marginEnd="@dimen/px30"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:tabBackground="@android:color/transparent"
+        app:tabIndicator="@drawable/underline"
+        app:tabIndicatorColor="?attr/colorAccent"
+        app:tabIndicatorFullWidth="false"
+        app:tabIndicatorHeight="@dimen/px10"
+        app:tabMode="fixed"
+        app:tabRippleColor="@android:color/transparent"
+        app:tabSelectedTextColor="?android:attr/textColorPrimary"
+        app:tabTextAppearance="@style/TopPageTabText"/>
+    <androidx.viewpager2.widget.ViewPager2
+        android:id="@+id/viewPager"
+        android:focusable="false"
+        android:descendantFocusability="afterDescendants"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/tabLayout"/>
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/rightStateContainer"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:background="?attr/backgroundColor"
+        android:clickable="false"
+        android:focusable="false"
+        android:visibility="gone"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent">
+        <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/rightStateImage"
+            android:layout_width="@dimen/px400"
+            android:layout_height="@dimen/px250"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_bias="0.48"
+            app:srcCompat="@drawable/empty" />
+
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/rightStateText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/px30"
+            android:text="@string/need_sign_in"
+            android:textColor="?android:attr/textColorPrimary"
+            android:textSize="@dimen/px30"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/rightStateImage" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>

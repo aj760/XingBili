@@ -1,0 +1,369 @@
+import org.gradle.api.DefaultTask
+import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.provider.Property
+import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.InputDirectory
+import org.gradle.api.tasks.InputFile
+import org.gradle.api.tasks.OutputDirectory
+import org.gradle.api.tasks.TaskAction
+import java.io.File
+
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+    id("com.google.protobuf")
+}
+
+// ── B站 app 端 gRPC 接口（热门等），proto 在 src/main/proto，lite 模式控制体积 ──
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:3.25.5"
+    }
+    plugins {
+        create("grpc") {
+            artifact = "io.grpc:protoc-gen-grpc-java:1.72.0"
+        }
+    }
+    generateProtoTasks {
+        all().forEach { task ->
+            task.builtins {
+                create("java") {
+                    option("lite")
+                }
+            }
+            task.plugins {
+                create("grpc") {
+                    option("lite")
+                }
+            }
+        }
+    }
+}
+
+abstract class FixSourceSetPathMapTask : DefaultTask() {
+    @get:InputFile
+    abstract val mappingFile: RegularFileProperty
+
+    @TaskAction
+    fun fix() {
+        val file = mappingFile.get().asFile
+        if (!file.exists()) return
+
+        val originalLines = file.readLines()
+        val mergedAliasLines = buildList {
+            originalLines.forEach { line ->
+                add(line)
+                when {
+                    line.contains(".app-packageDebugResources-59 ") -> {
+                        add(line.replace(".app-packageDebugResources-59 ", ".app-mergeDebugResources-59 "))
+                    }
+
+                    line.contains(".app-packageDebugResources-60 ") -> {
+                        add(line.replace(".app-packageDebugResources-60 ", ".app-mergeDebugResources-60 "))
+                    }
+                }
+            }
+        }.distinct()
+
+        if (mergedAliasLines != originalLines) {
+            file.writeText(mergedAliasLines.joinToString(System.lineSeparator()))
+        }
+    }
+}
+
+android {
+    namespace = "com.mytvb"
+    compileSdk = 35
+
+    defaultConfig {
+        // 沿用 XingBili 既有安装身份，保证与旧版共存升级、用户数据不丢
+        applicationId = (project.findProperty("applicationId") as? String) ?: "blbl.cat3399.feed"
+        minSdk = 23
+        targetSdk = 35
+        versionCode = (project.findProperty("versionCode") as String?)?.toInt() ?: 22
+        versionName = project.findProperty("versionName") as String? ?: "2.0.22"
+
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    externalNativeBuild {
+        // CCTV H5e 直播流原生解密（issue#106 阶段二），来源说明见 cpp/cctv_h5e/CMakeLists.txt
+        cmake {
+            path = file("src/main/cpp/cctv_h5e/CMakeLists.txt")
+            version = "3.22.1"
+        }
+    }
+
+    // 本机已装 NDK 版本（AGP 默认偏好 27.x 未安装且远程拉取受限）
+    ndkVersion = "25.1.8937393"
+
+    buildTypes {
+        debug {
+            ndk {
+                abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+            }
+        }
+
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+            ndk {
+                abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+            }
+        }
+    }
+
+    sourceSets {
+        // protobuf-gradle-plugin 对 AGP+Kotlin 不自动挂生成源码，手动加入编译源集
+        getByName("debug") {
+            java.srcDir("build/generated/sources/proto/debug/java")
+            java.srcDir("build/generated/sources/proto/debug/grpc")
+        }
+        getByName("release") {
+            java.srcDir("build/generated/sources/proto/release/java")
+            java.srcDir("build/generated/sources/proto/release/grpc")
+        }
+    }
+
+    androidResources {
+        // 只保留中英资源：依赖库自带 80+ 语言各 ~147 条 arsc 条目（vi/ur/tr/ta...），
+        // 剔除后 arsc 显著缩水。简中=values 默认目录不受影响；zh-rTW 必须显式列出
+        // （只写 zh 不会连带保留区域变体，实测滤丢繁中）；App 内三语显示另走 SettingLabels
+        localeFilters += listOf("zh", "zh-rTW", "en")
+    }
+
+    packaging {
+        // so 在 APK 内 deflate 压缩存储（默认 Stored 零压缩，6.4MB so 全额占体积，
+        // 其中 wasm2c 数据段高冗余压缩率最好）；代价=安装后磁盘双份 + 首装稍慢。
+        // minSdk 23 满足门槛。下载体积敏感的 TV 盒子场景划算。
+        jniLibs {
+            useLegacyPackaging = true
+        }
+        resources {
+            excludes += setOf(
+                "META-INF/DEPENDENCIES",
+                "META-INF/LICENSE*",
+                "META-INF/NOTICE*",
+                "META-INF/*.kotlin_module",
+                // protobuf 描述文件只有 protoc 编译期用得到，运行时不需要
+                "google/**/*.proto",
+            )
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
+    testOptions {
+        // JVM 单测里 android.util.Log 等框架桩返回默认值而非抛异常
+        //（HongguoDeviceRegister.registerDevice 的日志曾炸掉联网冒烟测试）
+        unitTests.isReturnDefaultValues = true
+    }
+    
+    buildFeatures {
+        viewBinding = true
+        buildConfig = true
+    }
+
+    lint {
+        disable += setOf(
+            "ResourceCycle",
+            "MissingDefaultResource",
+            "PxUsage",
+            "UnusedResources",
+            "PrivateResource",
+            "NotifyDataSetChanged",
+            "RtlHardcoded",
+            "RtlSymmetry",
+            "HardcodedText",
+            "Overdraw",
+            "VectorPath",
+            "GradleDependency",
+            "DrawAllocation",
+            "SpUsage",
+            "OldTargetApi",
+            "DiscouragedApi",
+            "IconXmlAndPng",
+            "IconLauncherShape",
+            "PluralsCandidate",
+            "UnusedAttribute",
+            "TypographyDashes",
+            "UnclosedTrace",
+            "ObsoleteSdkInt",
+            "UseKtx",
+            "ChromeOsAbiSupport",
+            "GifUsage",
+            "IconMissingDensityFolder",
+            "InsecureBaseConfiguration",
+            "VectorRaster",
+            "UnsafeOptInUsageError"
+        )
+        fatal += setOf("NotSibling")
+    }
+}
+
+abstract class RenameApkTask : DefaultTask() {
+    @get:InputDirectory
+    abstract val apkDirectory: DirectoryProperty
+
+    @get:OutputDirectory
+    abstract val renamedApkDirectory: DirectoryProperty
+
+    @get:Input
+    abstract val appName: Property<String>
+
+    @get:Input
+    abstract val buildType: Property<String>
+
+    @get:Input
+    abstract val versionName: Property<String>
+
+    @TaskAction
+    fun rename() {
+        val sourceApks = apkDirectory.get().asFileTree
+            .matching { include("**/*.apk") }
+            .files
+            .sortedBy { it.name }
+
+        if (sourceApks.isEmpty()) {
+            error("No APK outputs found in ${apkDirectory.get().asFile}")
+        }
+
+        val outputDir = renamedApkDirectory.get().asFile.apply { mkdirs() }
+        outputDir.listFiles()?.forEach { file ->
+            if (file.isFile && file.extension.equals("apk", ignoreCase = true)) {
+                file.delete()
+            }
+        }
+
+        sourceApks.forEachIndexed { index, apk ->
+            val suffix = if (sourceApks.size == 1) "" else "-${index + 1}"
+            val outputFile = File(
+                outputDir,
+                "${appName.get()}-v${versionName.get()}-${buildType.get()}$suffix.apk"
+            )
+            apk.copyTo(outputFile, overwrite = true)
+        }
+    }
+}
+
+androidComponents {
+    onVariants(selector().all()) { variant ->
+        val capitalizedVariantName = variant.name.replaceFirstChar { firstChar ->
+            if (firstChar.isLowerCase()) {
+                firstChar.titlecase()
+            } else {
+                firstChar.toString()
+            }
+        }
+        val renameTask = tasks.register("rename${capitalizedVariantName}Apk", RenameApkTask::class) {
+            apkDirectory.set(variant.artifacts.get(com.android.build.api.artifact.SingleArtifact.APK))
+            renamedApkDirectory.set(layout.buildDirectory.dir("outputs/renamed_apk/${variant.name}"))
+            appName.set("XingBili")
+            buildType.set(variant.buildType)
+            versionName.set(variant.outputs.single().versionName)
+        }
+        tasks.register("assemble${capitalizedVariantName}Renamed") {
+            group = "build"
+            description = "Builds the ${variant.name} APK and copies it to the renamed output directory."
+            dependsOn("assemble${capitalizedVariantName}")
+            dependsOn(renameTask)
+        }
+    }
+}
+
+dependencies {
+    implementation("androidx.core:core-ktx:1.15.0")
+    implementation("androidx.appcompat:appcompat:1.7.1")
+    // 文档开始前注入 JS：CCTV 播放页在老 WebView 上会因 postMessage 参数校验
+    // 抛 TypeError 中断播放器初始化，兼容补丁必须早于页面脚本执行
+    implementation("androidx.webkit:webkit:1.12.1")
+    implementation("com.google.android.material:material:1.12.0")
+    implementation("androidx.constraintlayout:constraintlayout:2.2.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-process:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.8.7")
+    implementation("androidx.fragment:fragment-ktx:1.8.6")
+    implementation("androidx.activity:activity-ktx:1.9.3")
+    implementation("androidx.recyclerview:recyclerview:1.4.0")
+    implementation("androidx.viewpager2:viewpager2:1.1.0")
+    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
+    implementation("androidx.datastore:datastore-preferences:1.1.4")
+    // B站 app 端 gRPC（热门官方接口 grpc.biliapi.net），lite 版控制体积
+    implementation("io.grpc:grpc-okhttp:1.72.0")
+    implementation("io.grpc:grpc-protobuf-lite:1.72.0")
+    implementation("io.grpc:grpc-stub:1.72.0")
+    implementation("com.google.protobuf:protobuf-javalite:3.25.5") // 同时服务 gRPC 与弹幕 proto 解析
+    implementation("javax.annotation:javax.annotation-api:1.3.2")
+
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation("com.google.code.gson:gson:2.10.1")
+
+    implementation("io.insert-koin:koin-android:3.5.3")
+
+    implementation("androidx.media3:media3-exoplayer:1.9.3")
+    implementation("androidx.media3:media3-ui:1.9.3")
+    implementation("androidx.media3:media3-common:1.9.3")
+    implementation("androidx.media3:media3-datasource:1.9.3")
+    implementation("androidx.media3:media3-datasource-okhttp:1.9.3")
+    implementation("androidx.media3:media3-database:1.9.3")
+    implementation("androidx.media3:media3-exoplayer-dash:1.9.3")
+    implementation("androidx.media3:media3-exoplayer-hls:1.9.3")
+
+    // FFmpeg 音频软解扩展（Jellyfin 预编译，跟随 media3 1.9 系列）：
+    // EXTENSION_RENDERER_MODE_PREFER 下自动优先接管——多数手机无 AC-3/EAC3 系统解码器
+    // （杜比全景声静默跳轨无声），系统 FLAC 解码器 input buffer 32KB 上限解不了 Hi-Res
+    // 大帧（34KB+，skip 容错顿挫）；FFmpeg 的 eac3 解码器为 AC-3/E-AC-3 超集实现，
+    // flac 同在启用集，一并补齐。体积约 1.4MB/ABI。LGPL 动态链接，合规。
+    implementation("org.jellyfin.media3:media3-ffmpeg-decoder:1.9.0+1")
+
+    // 腾讯 TBS X5 WebView 内核（TV 直播可选内核）。版本取自参考反编译 tbs APP（SDK_VERSION_CODE 44286 / 4.3.0.386）。
+    implementation("com.tencent.tbs:tbssdk:44286")
+
+    // GIF 支持（仅用于本地 animated drawable，~200KB）
+    implementation("pl.droidsonroids.gif:android-gif-drawable:1.2.29")
+
+    // 协程
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+
+    // 二维码解析
+    implementation("com.google.zxing:core:3.5.2")
+
+    testImplementation("junit:junit:4.13.2")
+    // 纯 JVM 单测中 stub Context 等含 final 方法的 Android 类（mockable jar 无法被子类覆写）
+    testImplementation("org.mockito:mockito-core:5.14.2")
+    // 纯 JVM 单测用真 org.json（android.jar 里的 org.json 是抛异常的 stub）
+    testImplementation("org.json:json:20240303")
+    androidTestImplementation("androidx.test.ext:junit:1.1.5")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.1.5")
+}
+
+
+val fixDebugSourceSetPathMap by tasks.registering(FixSourceSetPathMapTask::class) {
+    val mapTaskName = "mapDebugSourceSetPaths"
+    dependsOn(mapTaskName)
+    mappingFile.set(
+        layout.buildDirectory.file(
+            "intermediates/source_set_path_map/debug/$mapTaskName/file-map.txt"
+        )
+    )
+}
+
+tasks.matching { it.name == "mergeDebugResources" }.configureEach {
+    dependsOn(fixDebugSourceSetPathMap)
+}

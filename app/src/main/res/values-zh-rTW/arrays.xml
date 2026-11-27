@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <array name="screen_ratios">
+        <item>自動調整</item>
+        <item>符合寬度</item>
+        <item>符合高度</item>
+        <item>延展</item>
+        <item>放大</item>
+    </array>
+</resources>

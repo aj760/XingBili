@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/click_view"
+    android:layout_width="match_parent"
+    android:layout_height="@dimen/px130"
+    android:background="@drawable/cell_background"
+    android:clickable="true"
+    android:focusable="true"
+    android:paddingStart="@dimen/px10"
+    android:paddingTop="@dimen/px8"
+    android:paddingEnd="@dimen/px10"
+    android:paddingBottom="@dimen/px8">
+
+    <com.mytvb.core.ui.image.AvatarBadgeView
+        android:id="@+id/image_view"
+        android:layout_width="@dimen/px90"
+        android:layout_height="@dimen/px90"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:srcCompat="@drawable/default_avatar" />
+
+    <androidx.appcompat.widget.AppCompatTextView
+        android:id="@+id/text_view"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/px10"
+        android:layout_marginEnd="@dimen/px4"
+        android:ellipsize="end"
+        android:includeFontPadding="false"
+        android:singleLine="true"
+        android:text="@string/app_name"
+        android:textColor="@color/pink"
+        android:textSize="@dimen/px28"
+        android:textStyle="bold"
+        app:layout_constrainedWidth="true"
+        app:layout_constraintBottom_toTopOf="@id/text_meta"
+        app:layout_constraintEnd_toStartOf="@id/text_level"
+        app:layout_constraintHorizontal_bias="0"
+        app:layout_constraintHorizontal_chainStyle="packed"
+        app:layout_constraintStart_toEndOf="@id/image_view"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_chainStyle="packed" />
+
+    <com.mytvb.core.ui.user.UserLevelBadgeView
+        android:id="@+id/text_level"
+        android:layout_width="wrap_content"
+        android:layout_height="@dimen/px24"
+        android:visibility="gone"
+        app:layout_constrainedWidth="true"
+        app:layout_constraintBottom_toBottomOf="@id/text_view"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/text_view"
+        app:layout_constraintHorizontal_bias="0"
+        app:layout_constraintTop_toTopOf="@id/text_view" />
+
+    <androidx.appcompat.widget.AppCompatTextView
+        android:id="@+id/text_meta"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/px10"
+        android:layout_marginTop="@dimen/px6"
+        android:ellipsize="end"
+        android:includeFontPadding="false"
+        android:singleLine="true"
+        android:text="@string/cell_user_stat_placeholder"
+        android:textColor="?android:attr/textColorSecondary"
+        android:textSize="@dimen/px22"
+        app:layout_constraintBottom_toTopOf="@id/text_action"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/image_view"
+        app:layout_constraintTop_toBottomOf="@id/text_view" />
+
+    <androidx.appcompat.widget.AppCompatTextView
+        android:id="@+id/text_action"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/px10"
+        android:layout_marginTop="@dimen/px6"
+        android:layout_marginBottom="@dimen/px4"
+        android:background="@drawable/bg_follow_btn_follow"
+        android:includeFontPadding="false"
+        android:paddingStart="@dimen/px16"
+        android:paddingTop="@dimen/px4"
+        android:paddingEnd="@dimen/px16"
+        android:paddingBottom="@dimen/px4"
+        android:singleLine="true"
+        android:text="@string/follow"
+        android:textColor="@android:color/white"
+        android:textSize="@dimen/px18"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toEndOf="@id/image_view"
+        app:layout_constraintTop_toBottomOf="@id/text_meta" />
+</androidx.constraintlayout.widget.ConstraintLayout>

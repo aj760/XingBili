@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 字幕专用底版：比共用的 transparent_black_bg(#77) 更实，保证亮画面下白字可读 -->
+    <solid android:color="#AA000000"/>
+    <corners android:radius="@dimen/px15"/>
+</shape>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 设置分组标题：左缘与组内条目文字对齐（px18 条目外边距 + px50 条目内边距） -->
+<androidx.appcompat.widget.AppCompatTextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/tvGroupTitle"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingStart="@dimen/px68"
+    android:paddingEnd="@dimen/px18"
+    android:paddingTop="@dimen/px26"
+    android:paddingBottom="@dimen/px10"
+    android:textColor="?android:attr/textColorSecondary"
+    android:textSize="@dimen/px28"
+    android:textStyle="bold" />

@@ -1,0 +1,1123 @@
+package com.mytvb.ui.adapter
+
+import android.annotation.SuppressLint
+import android.content.Context
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import androidx.appcompat.widget.AppCompatTextView
+import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.ListAdapter
+import androidx.recyclerview.widget.RecyclerView
+import com.google.android.flexbox.FlexboxLayout
+import com.mytvb.R
+import com.mytvb.core.common.log.AppLog
+import com.mytvb.core.ui.base.VideoRecyclerViewTuning
+import com.mytvb.core.ui.focus.tv.LinearTvFocusStrategy
+import com.mytvb.core.ui.focus.tv.TvDataChangeReason
+import com.mytvb.core.ui.focus.tv.TvListFocusController
+import com.mytvb.core.ui.image.ImageLoader
+import com.mytvb.core.ui.system.ScreenUtils
+import com.mytvb.core.common.format.NumberUtils
+import com.mytvb.core.common.time.TimeUtils
+import com.mytvb.databinding.CellSeriesLaneBinding
+import com.mytvb.core.ui.user.UserBadgeText
+import com.mytvb.core.ui.user.UserBadgesStore
+import com.mytvb.databinding.CellVideoDetailHeadBinding
+import com.mytvb.model.video.VideoModel
+import com.mytvb.model.video.detail.Tag
+import com.mytvb.model.video.detail.VideoView
+
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import com.mytvb.core.ui.base.AppToast
+
+import com.mytvb.feature.player.comment.VideoCommentsAdapter
+
+internal class VideoDetailContentAdapter(
+    private val onPlayClick: () -> Unit,
+    private val onUploaderClick: () -> Unit,
+    private val onLikeClick: () -> Unit,
+    private val onCoinClick: () -> Unit,
+    private val onFavoriteClick: () -> Unit,
+    private val onTagClick: (Tag) -> Unit,
+    private val onPageClick: (VideoModel) -> Unit,
+    private val onUgcEpisodeClick: (View, VideoModel) -> Unit,
+    private val onUgcOrderToggle: () -> Unit,
+    private val onRelatedVideoClick: (VideoModel) -> Unit,
+    private val onDescriptionClick: (CharSequence) -> Unit,
+    private val onBackFocus: () -> Boolean,
+    private val onFollowClick: () -> Unit,
+    private val onTripleAction: () -> Unit,
+    private val onTabSelected: (commentTab: Boolean) -> Unit = {},
+    private val onCommentSortSelected: (sortNew: Boolean) -> Unit = {},
+    private val expandedCommentRpids: MutableSet<Long> = mutableSetOf(),
+    private val onCommentToggleExpand: (rpid: Long, position: Int) -> Unit = { _, _ -> },
+    private val onCommentClick: (com.mytvb.feature.player.comment.VideoCommentItem) -> Unit = {},
+    private val onCommentLongClick: (com.mytvb.feature.player.comment.VideoCommentItem) -> Boolean = { false },
+    private val onCommentPictureClick: (com.mytvb.feature.player.comment.VideoCommentItem, Int) -> Unit = { _, _ -> },
+    private val onCommentItemFocused: () -> Unit = {}
+) : ListAdapter<VideoDetailContentAdapter.Row, RecyclerView.ViewHolder>(RowItemCallback) {
+
+    sealed interface Row {
+        data class Header(
+            val view: VideoView,
+            val tags: List<Tag>,
+            val isLiked: Boolean,
+            val isCoined: Boolean,
+            val isFavorited: Boolean
+        ) : Row
+
+        data class Pages(val items: List<VideoModel>) : Row
+
+        data class UgcSeason(
+            val title: String,
+            val items: List<VideoModel>,
+            val isReverse: Boolean,
+            val currentAid: Long = 0
+        ) : Row
+
+        data class Related(val items: List<VideoModel>) : Row
+
+        /** 内容 Tab 栏：「合集·推荐/推荐」与「评论 N」切换。 */
+        data class TabBar(
+            val contentTabText: String,
+            val commentTabSelected: Boolean,
+            val commentCountText: String
+        ) : Row
+
+        /** 评论区排序行（热门/最新）。 */
+        data class CommentSort(val sortNewSelected: Boolean) : Row
+
+        /** 单条根评论（复用播放页评论面板的条目渲染）。 */
+        data class CommentEntry(val item: com.mytvb.feature.player.comment.VideoCommentItem) : Row
+
+        /** 评论区状态提示行（加载中/空/失败）。 */
+        data class CommentHint(val text: String) : Row
+    }
+
+    override fun getItemViewType(position: Int): Int {
+        return when (getItem(position)) {
+            is Row.Header -> VIEW_TYPE_HEADER
+            is Row.Pages -> VIEW_TYPE_PAGES
+            is Row.UgcSeason -> VIEW_TYPE_UGC_SEASON
+            is Row.Related -> VIEW_TYPE_RELATED
+            is Row.TabBar -> VIEW_TYPE_TAB_BAR
+            is Row.CommentSort -> VIEW_TYPE_COMMENT_SORT
+            is Row.CommentEntry -> VIEW_TYPE_COMMENT_ENTRY
+            is Row.CommentHint -> VIEW_TYPE_COMMENT_HINT
+        }
+    }
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+        val inflater = LayoutInflater.from(parent.context)
+        return when (viewType) {
+            VIEW_TYPE_HEADER -> VideoDetailHeadViewHolder(
+                CellVideoDetailHeadBinding.inflate(inflater, parent, false),
+                onPlayClick,
+                onUploaderClick,
+                onLikeClick,
+                onCoinClick,
+                onFavoriteClick,
+                onTagClick,
+                onDescriptionClick,
+                onBackFocus,
+                onFollowClick,
+                onTripleAction,
+                parent.context
+            )
+
+            VIEW_TYPE_PAGES -> PagesLaneViewHolder(
+                CellSeriesLaneBinding.inflate(inflater, parent, false),
+                onPageClick
+            )
+
+            VIEW_TYPE_UGC_SEASON -> UgcSeasonLaneViewHolder(
+                CellSeriesLaneBinding.inflate(inflater, parent, false),
+                onUgcEpisodeClick,
+                onUgcOrderToggle
+            )
+
+            VIEW_TYPE_TAB_BAR -> TabBarViewHolder(
+                com.mytvb.databinding.CellVideoDetailTabBarBinding.inflate(inflater, parent, false),
+                onTabSelected,
+                nextRowIsUgcSeason = { holder ->
+                    val pos = holder.bindingAdapterPosition
+                    pos != RecyclerView.NO_POSITION &&
+                        pos + 1 < itemCount && getItem(pos + 1) is Row.UgcSeason
+                }
+            )
+
+            VIEW_TYPE_COMMENT_SORT -> CommentSortViewHolder(
+                com.mytvb.databinding.CellCommentSortBinding.inflate(inflater, parent, false),
+                onCommentSortSelected
+            )
+
+            VIEW_TYPE_COMMENT_ENTRY -> CommentEntryViewHolder(
+                com.mytvb.databinding.ItemCommentBinding.inflate(inflater, parent, false),
+                // 第一条评论按"上"回排序行：主列表上一行是 CommentSort 即顶边
+                // （Vh 内置"position==0"判定在主列表恒 false，需注入）
+                isTopEdgeItem = { holder ->
+                    // 内层 Vh 未被主 RecyclerView attach，position 恒 -1；
+                    // 从 itemView 反查外层 CommentEntryViewHolder 的真实位置
+                    val pos = commentEntryPosition(holder)
+                    pos > 0 && getItem(pos - 1) is Row.CommentSort
+                },
+                isBottomEdgeItem = { holder ->
+                    // 主列表末行（末条评论后面无 hint 行时）按"下"消费防飞出
+                    val pos = commentEntryPosition(holder)
+                    pos != RecyclerView.NO_POSITION && pos == itemCount - 1
+                },
+                onCommentTopEdge = { holder -> focusSelectedSortChip(holder) },
+                onCommentItemFocused = onCommentItemFocused
+            )
+
+            VIEW_TYPE_COMMENT_HINT -> {
+                val text = AppCompatTextView(parent.context).apply {
+                    setPadding(
+                        parent.resources.getDimensionPixelSize(R.dimen.px30), 0,
+                        parent.resources.getDimensionPixelSize(R.dimen.px30),
+                        parent.resources.getDimensionPixelSize(R.dimen.px24)
+                    )
+                    setTextColor(ContextCompat.getColor(context, R.color.subTextColor))
+                    setTextSize(0, parent.resources.getDimension(R.dimen.px28))
+                    isFocusable = false
+                    isClickable = false
+                }
+                CommentHintViewHolder(text)
+            }
+
+            else -> RelatedLaneViewHolder(
+                CellSeriesLaneBinding.inflate(inflater, parent, false),
+                onRelatedVideoClick,
+                // 上一行是合集 lane 时（有合集的视频），lane UP 放行系统搜索落合集卡片
+                upperRowIsLane = { holder ->
+                    val pos = holder.bindingAdapterPosition
+                    pos > 0 && getItem(pos - 1) is Row.UgcSeason
+                }
+            )
+        }
+    }
+
+    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+        when (val row = getItem(position)) {
+            is Row.Header -> (holder as VideoDetailHeadViewHolder).bind(row.view, row.tags, row.isLiked, row.isCoined, row.isFavorited)
+            is Row.Pages -> (holder as PagesLaneViewHolder).bind(row.items)
+            is Row.UgcSeason -> (holder as UgcSeasonLaneViewHolder).bind(row.title, row.items, row.isReverse, row.currentAid)
+            is Row.Related -> (holder as RelatedLaneViewHolder).bind(row.items)
+            is Row.TabBar -> (holder as TabBarViewHolder).bind(row.contentTabText, row.commentTabSelected, row.commentCountText)
+            is Row.CommentSort -> (holder as CommentSortViewHolder).bind(row.sortNewSelected)
+            is Row.CommentEntry -> (holder as CommentEntryViewHolder).bind(
+                item = row.item,
+                isExpanded = expandedCommentRpids.contains(row.item.rpid),
+                onToggleExpand = { rpid ->
+                    onCommentToggleExpand(rpid, holder.bindingAdapterPosition)
+                },
+                onClick = onCommentClick,
+                onLongClick = onCommentLongClick,
+                onPictureClick = onCommentPictureClick
+            )
+            is Row.CommentHint -> (holder as CommentHintViewHolder).bind(row.text)
+        }
+    }
+
+    class VideoDetailHeadViewHolder(
+        private val binding: CellVideoDetailHeadBinding,
+        private val onPlayClick: () -> Unit,
+        private val onUploaderClick: () -> Unit,
+        private val onLikeClick: () -> Unit,
+        private val onCoinClick: () -> Unit,
+        private val onFavoriteClick: () -> Unit,
+        private val onTagClick: (Tag) -> Unit,
+        private val onDescriptionClick: (CharSequence) -> Unit,
+        private val onBackFocus: () -> Boolean,
+        private val onFollowClick: () -> Unit,
+        private val onTripleAction: () -> Unit,
+        private val context: Context
+    ) : RecyclerView.ViewHolder(binding.root) {
+
+        private var currentTags: List<Tag> = emptyList()
+        private var currentDescription: CharSequence = ""
+        private var relationAttribute = 0
+
+        private var tripleActionTriggered = false
+        private val tripleStartRunnable = Runnable {
+            binding.viewTripleProgress.onComplete = {
+                tripleActionTriggered = true
+                onTripleAction()
+            }
+            binding.viewTripleProgress.start()
+        }
+
+        init {
+            binding.cardCover.viewTreeObserver.addOnGlobalLayoutListener(object : android.view.ViewTreeObserver.OnGlobalLayoutListener {
+                override fun onGlobalLayout() {
+                    val cardHeight = binding.cardCover.height
+                    if (cardHeight > 0) {
+                        val ringSize = (cardHeight * 0.38f).toInt()
+                        val iconSize = (ringSize * 0.476f).toInt()
+                        binding.viewPlayRing.layoutParams = binding.viewPlayRing.layoutParams.apply {
+                            width = ringSize
+                            height = ringSize
+                        }
+                        binding.iconPlayButton.layoutParams = binding.iconPlayButton.layoutParams.apply {
+                            width = iconSize
+                            height = iconSize
+                        }
+                        binding.cardCover.viewTreeObserver.removeOnGlobalLayoutListener(this)
+                    }
+                }
+            })
+
+            binding.buttonPlay.setOnClickListener { onPlayClick() }
+            @SuppressLint("ClickableViewAccessibility")
+            binding.buttonPlay.setOnTouchListener { _, event ->
+                when (event.action) {
+                    android.view.MotionEvent.ACTION_DOWN -> animatePlayPress(1.0f)
+                    android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> animatePlayPress(1.3f)
+                }
+                false
+            }
+            binding.buttonPlay.setOnKeyListener { _, keyCode, event ->
+                if (handleBackFocusKey(keyCode, event)) {
+                    true
+                } else if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER || keyCode == android.view.KeyEvent.KEYCODE_ENTER) {
+                    if (event.action == android.view.KeyEvent.ACTION_DOWN) {
+                        animatePlayPress(1.0f)
+                    } else if (event.action == android.view.KeyEvent.ACTION_UP) {
+                        animatePlayPress(1.3f)
+                        onPlayClick()
+                    }
+                    true
+                } else false
+            }
+            binding.buttonUploader.setOnClickListener { onUploaderClick() }
+            binding.buttonLike.setOnClickListener {
+                if (!tripleActionTriggered) {
+                    onLikeClick()
+                    showTripleHintIfNeeded()
+                }
+            }
+            binding.buttonCoin.setOnClickListener { onCoinClick() }
+            binding.buttonFavorite.setOnClickListener { onFavoriteClick() }
+            binding.buttonDetail.setOnClickListener { onDescriptionClick(currentDescription) }
+            binding.buttonFollow.setOnClickListener { onFollowClick() }
+
+            binding.buttonLike.setOnLongClickListener {
+                tripleActionTriggered = false
+                tripleStartRunnable.run()
+                true
+            }
+            @SuppressLint("ClickableViewAccessibility")
+            binding.buttonLike.setOnTouchListener { _, event ->
+                if (event.action == android.view.MotionEvent.ACTION_UP || event.action == android.view.MotionEvent.ACTION_CANCEL) {
+                    if (binding.viewTripleProgress.visibility == View.VISIBLE && !tripleActionTriggered) {
+                        binding.viewTripleProgress.cancel()
+                    }
+                }
+                false
+            }
+            binding.buttonLike.setOnKeyListener { v, keyCode, event ->
+                if (handleBackFocusKey(keyCode, event)) {
+                    true
+                } else if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER || keyCode == android.view.KeyEvent.KEYCODE_ENTER) {
+                    if (event.action == android.view.KeyEvent.ACTION_DOWN) {
+                        tripleActionTriggered = false
+                        v.removeCallbacks(tripleStartRunnable)
+                        v.postDelayed(tripleStartRunnable, 500)
+                    } else if (event.action == android.view.KeyEvent.ACTION_UP) {
+                        v.removeCallbacks(tripleStartRunnable)
+                        val wasLongPress = binding.viewTripleProgress.visibility == View.VISIBLE
+                        if (wasLongPress) {
+                            binding.viewTripleProgress.cancel()
+                        }
+                        if (!tripleActionTriggered && !wasLongPress) {
+                            onLikeClick()
+                            showTripleHintIfNeeded()
+                        }
+                    }
+                    true
+                } else false
+            }
+            val backFocusKeyListener = View.OnKeyListener { _, keyCode, event ->
+                handleBackFocusKey(keyCode, event)
+            }
+            binding.buttonCoin.setOnKeyListener(backFocusKeyListener)
+            binding.buttonFavorite.setOnKeyListener(backFocusKeyListener)
+
+            val scrollListener = View.OnFocusChangeListener { _, hasFocus ->
+                if (hasFocus) {
+                    (itemView.parent as? RecyclerView)?.smoothScrollToPosition(0)
+                }
+            }
+
+            val accentColor = ContextCompat.getColor(context, R.color.colorAccent)
+            val white = android.graphics.Color.WHITE
+
+            binding.buttonPlay.onFocusChangeListener = View.OnFocusChangeListener { _, hasFocus ->
+                if (hasFocus) {
+                    (itemView.parent as? RecyclerView)?.smoothScrollToPosition(0)
+                }
+                val scale = if (hasFocus) 1.3f else 1.0f
+                val iconColor = if (hasFocus) accentColor else white
+                binding.iconPlayButton.animate().scaleX(scale).scaleY(scale).setDuration(200).start()
+                binding.viewPlayRing.animate().scaleX(scale).scaleY(scale).setDuration(200).start()
+                binding.iconPlayButton.setColorFilter(iconColor)
+                val ringDrawable = binding.viewPlayRing.background?.mutate()
+                if (ringDrawable is android.graphics.drawable.GradientDrawable) {
+                    ringDrawable.setStroke(context.resources.getDimensionPixelSize(R.dimen.px6), iconColor)
+                }
+            }
+            binding.buttonUploader.onFocusChangeListener = scrollListener
+            binding.buttonLike.onFocusChangeListener = scrollListener
+            binding.buttonCoin.onFocusChangeListener = scrollListener
+            binding.buttonFavorite.onFocusChangeListener = scrollListener
+            binding.buttonFollow.onFocusChangeListener = scrollListener
+        }
+
+        private fun animatePlayPress(scale: Float) {
+            binding.viewPlayRing.animate().scaleX(scale).scaleY(scale).setDuration(100).start()
+            binding.iconPlayButton.animate().scaleX(scale).scaleY(scale).setDuration(100).start()
+        }
+
+        private fun handleBackFocusKey(keyCode: Int, event: android.view.KeyEvent): Boolean {
+            return VideoDetailHeaderFocusKeys.shouldFocusBack(keyCode, event.action) &&
+                onBackFocus()
+        }
+
+        fun bind(view: VideoView, tags: List<Tag>, isLiked: Boolean, isCoined: Boolean, isFavorited: Boolean) {
+            ImageLoader.loadVideoCover(
+                imageView = binding.imageCover,
+                url = view.pic,
+                placeholder = R.drawable.default_video,
+                error = R.drawable.default_video
+            )
+
+            binding.textTitle.text = view.title
+
+            // 数据行：官方手机端样式（播放数/评论数/发布时间/正在看，图标+数字）
+            val stat = view.stat
+            binding.textStatView.text = stat?.let { formatCount(it.view) }.orEmpty()
+            binding.textStatReply.text = stat?.let { formatCount(it.reply) }.orEmpty()
+            binding.textStatTime.text = if (view.pubDate > 0) {
+                TimeUtils.formatTime(view.pubDate)
+            } else {
+                ""
+            }
+            binding.ivStatOnline.visibility = View.GONE
+            binding.textStatOnline.visibility = View.GONE
+
+            val owner = view.owner
+            if (owner != null) {
+                UserBadgeText.bind(binding.textName, owner.name, isVip = false)
+                ImageLoader.loadCircle(
+                    imageView = binding.imageAvatar,
+                    url = owner.face,
+                    placeholder = R.drawable.default_avatar,
+                    error = R.drawable.default_avatar
+                )
+                binding.imageAvatar.setBadge(
+                    officialVerifyType = owner.officialVerify?.type ?: -1
+                )
+                binding.imageAvatar.tag = owner.mid
+                binding.imageAvatar.setPendant(null)
+                // owner 接口不带会员/头像框，按 mid 补齐（回调校验 tag 防 holder 复用错位）
+                UserBadgesStore.enqueue(owner.mid) { badges ->
+                    if (binding.imageAvatar.tag != badges.mid) return@enqueue
+                    binding.imageAvatar.setPendant(badges.pendantUrl)
+                    if (badges.isVip) {
+                        binding.imageAvatar.setBadge(
+                            officialVerifyType = owner.officialVerify?.type ?: -1,
+                            vipStatus = 1,
+                            vipType = 2,
+                        )
+                    }
+                    if (view.owner?.mid == badges.mid) {
+                        UserBadgeText.bind(binding.textName, owner.name, badges.isVip)
+                    }
+                }
+            }
+
+            currentDescription = view.desc.orEmpty()
+            updateDescription(currentDescription)
+
+            updateTagLayout(tags)
+            updateActionButtons(isLiked, isCoined, isFavorited)
+            updateUploaderNextFocusDown()
+        }
+
+        private fun updateUploaderNextFocusDown() {
+            val targetId = if (binding.buttonDetail.visibility == View.VISIBLE) {
+                R.id.button_detail
+            } else if (binding.viewFlexLayout.visibility == View.VISIBLE && binding.viewFlexLayout.childCount > 0) {
+                R.id.view_flex_layout
+            } else {
+                0
+            }
+            if (targetId != 0) {
+                binding.buttonUploader.nextFocusDownId = targetId
+                binding.buttonFollow.nextFocusDownId = targetId
+            }
+        }
+
+        private fun updateDescription(description: CharSequence) {
+            if (description.isBlank()) {
+                binding.textDescription.visibility = View.GONE
+                binding.buttonDetail.visibility = View.GONE
+                updateUploaderNextFocusDown()
+                return
+            }
+            binding.textDescription.visibility = View.VISIBLE
+            val displayText = context.getString(
+                R.string.adapter_description_format,
+                description.toString().replace(Regex("[\\r\\n]+"), " ")
+            )
+            binding.textDescription.text = displayText
+            binding.textDescription.post {
+                val availableWidth = binding.textDescription.width -
+                        binding.textDescription.paddingLeft - binding.textDescription.paddingRight
+                if (availableWidth > 0) {
+                    val textWidth = binding.textDescription.paint.measureText(displayText.toString())
+                    binding.buttonDetail.visibility = if (textWidth > availableWidth) View.VISIBLE else View.GONE
+                    updateUploaderNextFocusDown()
+                }
+            }
+        }
+
+        private fun updateTagLayout(tags: List<Tag>) {
+            binding.viewFlexLayout.removeAllViews()
+            if (tags.isEmpty()) {
+                binding.viewFlexLayout.visibility = View.GONE
+                return
+            }
+            currentTags = tags
+            binding.viewFlexLayout.visibility = View.VISIBLE
+            tags.take(6).forEach { tag ->
+                val tagView = createTagView(tag.tagName)
+                tagView.setOnClickListener { onTagClick(tag) }
+                binding.viewFlexLayout.addView(tagView)
+            }
+        }
+
+        private fun createTagView(text: String): AppCompatTextView {
+            val textSizePx = context.resources.getDimension(R.dimen.px24)
+            val ta = context.obtainStyledAttributes(intArrayOf(android.R.attr.textColorPrimary))
+            val textColor = ta.getColor(0, 0)
+            ta.recycle()
+            return AppCompatTextView(context).apply {
+                this.text = text
+                tag = text
+                setTextSize(0, textSizePx)
+                setTextColor(textColor)
+                setBackgroundResource(R.drawable.button_common)
+                setPadding(15, 3, 15, 3)
+                layoutParams = FlexboxLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    topMargin = 5
+                    bottomMargin = 3
+                    rightMargin = 8
+                }
+                isClickable = true
+                isFocusable = true
+            }
+        }
+
+        fun currentRelationAttribute(): Int = relationAttribute
+
+        fun updateActionButtons(isLiked: Boolean, isCoined: Boolean, isFavorited: Boolean) {
+            val pink = android.content.res.ColorStateList.valueOf(
+                ContextCompat.getColor(context, R.color.pink)
+            )
+            val default = android.content.res.ColorStateList.valueOf(
+                ContextCompat.getColor(context, R.color.textColor)
+            )
+            binding.buttonLike.imageTintList = if (isLiked) pink else default
+            binding.buttonCoin.imageTintList = if (isCoined) pink else default
+            binding.buttonFavorite.imageTintList = if (isFavorited) pink else default
+        }
+
+        fun updateFollowState(attribute: Int) {
+            relationAttribute = attribute
+            val isMutual = attribute == 6
+            val isFollowing = attribute == 2 || attribute == 6
+            val white = ContextCompat.getColorStateList(context, android.R.color.white)
+            if (isMutual) {
+                binding.textFollow.text = context.getString(R.string.follow_as_friend)
+                binding.textFollow.setTextColor(ContextCompat.getColor(context, android.R.color.white))
+                binding.iconFollow.setImageResource(R.drawable.ic_check)
+                binding.iconFollow.imageTintList = white
+            } else if (isFollowing) {
+                binding.textFollow.text = context.getString(R.string.followed)
+                binding.textFollow.setTextColor(ContextCompat.getColor(context, android.R.color.white))
+                binding.iconFollow.setImageResource(R.drawable.ic_check)
+                binding.iconFollow.imageTintList = white
+            } else {
+                binding.textFollow.text = context.getString(R.string.follow)
+                binding.textFollow.setTextColor(ContextCompat.getColor(context, android.R.color.white))
+                binding.iconFollow.setImageResource(R.drawable.ic_plus)
+                binding.iconFollow.imageTintList = white
+            }
+        }
+
+        fun updateFansCount(count: Long) {
+            binding.textFans.text = formatFans(count)
+        }
+
+        /** 数据行"正在看"：接口返回 null/开关关闭时不显示（缺字段隐藏整组）。 */
+        fun updateOnlineWatching(text: String) {
+            if (text.isBlank()) return
+            binding.textStatOnline.text = context.getString(R.string.online_watching_format, text)
+            binding.ivStatOnline.visibility = View.VISIBLE
+            binding.textStatOnline.visibility = View.VISIBLE
+        }
+
+        private fun showTripleHintIfNeeded() {
+            val prefs = context.getSharedPreferences("triple_action_hint", Context.MODE_PRIVATE)
+            val today = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(Date())
+            if (prefs.getString("last_hint_date", "") != today) {
+                prefs.edit().putString("last_hint_date", today).apply()
+                AppToast.show(context, R.string.adapter_triple_hint)
+            }
+        }
+
+        private fun formatCount(count: Long): String {
+            return NumberUtils.formatCount(context, count)
+        }
+
+        private fun formatFans(count: Long): String {
+            return context.getString(R.string.adapter_fans_count_format, NumberUtils.formatCount(context, count))
+        }
+    }
+
+    class PagesLaneViewHolder(
+        private val binding: CellSeriesLaneBinding,
+        onPageClick: (VideoModel) -> Unit
+    ) : RecyclerView.ViewHolder(binding.root) {
+
+        private val adapter = EpisodeListAdapter()
+
+        init {
+            adapter.setShowLoadMore(false)
+            binding.recyclerView.layoutManager =
+                LinearLayoutManager(binding.root.context, RecyclerView.HORIZONTAL, false)
+            binding.recyclerView.adapter = adapter
+            binding.recyclerView.isFocusable = false
+            binding.buttonOrder.visibility = View.GONE
+            adapter.setOnItemClickListener { _, item ->
+                onPageClick(item)
+            }
+        }
+
+        fun bind(items: List<VideoModel>) {
+            binding.topTitle.text = binding.root.context.getString(
+                R.string.video_detail_pages_title, items.size
+            )
+            adapter.setData(items)
+        }
+    }
+
+    class UgcSeasonLaneViewHolder(
+        private val binding: CellSeriesLaneBinding,
+        onEpisodeClick: (View, VideoModel) -> Unit,
+        private val onOrderToggle: () -> Unit
+    ) : RecyclerView.ViewHolder(binding.root) {
+
+        private var tvFocusController: TvListFocusController? = null
+        private val videoAdapter = VideoAdapter(
+            itemWidthPx = ScreenUtils.getScreenWidth(binding.root.context) / 5,
+            onItemFocusedWithView = { view, position ->
+                tvFocusController?.onItemFocused(view, position)
+            },
+            onItemDpad = { view, keyCode, event ->
+                val handled = tvFocusController?.handleKey(view, keyCode, event) == true
+                when {
+                    // 焦点已移动（含左右键），必须消费事件：返回 false 会让系统
+                    // 兜底 focusSearch 从新焦点再搜一格，表现为每次按键跳两个
+                    handled -> true
+                    // 合集卡片按"上"先回本 lane 的正/反序按钮（不再直接飞 Tab 栏）
+                    keyCode == android.view.KeyEvent.KEYCODE_DPAD_UP &&
+                        event.action == android.view.KeyEvent.ACTION_DOWN ->
+                        binding.buttonOrder.requestFocus()
+                    else -> false
+                }
+            }
+        )
+        val innerRecyclerView: RecyclerView get() = binding.recyclerView
+        private var lastIsReverse: Boolean? = null
+        private var lastCurrentAid: Long = 0
+
+        init {
+            videoAdapter.setShowLoadMore(false)
+            binding.recyclerView.layoutManager =
+                LinearLayoutManager(binding.root.context, RecyclerView.HORIZONTAL, false)
+            binding.recyclerView.adapter = videoAdapter
+            VideoRecyclerViewTuning.apply(binding.recyclerView, videoAdapter)
+            tvFocusController = TvListFocusController(
+                recyclerView = binding.recyclerView,
+                adapter = videoAdapter,
+                strategy = LinearTvFocusStrategy(RecyclerView.HORIZONTAL),
+                canLoadMore = { false },
+                loadMore = {},
+                restoreAppendFocusFromOutside = true,
+                restoreFocusOnFocusedDetach = true,
+                debugName = "detail-ugc"
+            )
+            binding.recyclerView.isFocusable = false
+            binding.buttonOrder.visibility = View.VISIBLE
+            binding.buttonOrder.setOnClickListener {
+                onOrderToggle()
+            }
+            // 正/反序按钮按"上"回 Tab 栏（几何搜索会跳过左侧 Tab 直达 Header）
+            binding.buttonOrder.setOnKeyListener { _, keyCode, event ->
+                handleLaneUpExit(itemView, keyCode, event, handledByStrategy = false)
+            }
+            videoAdapter.setOnItemClickListener { v, item ->
+                onEpisodeClick(v, item)
+            }
+            bindBackButtonOnScroll(binding.recyclerView)
+        }
+
+        fun bind(title: String, items: List<VideoModel>, isReverse: Boolean, currentAid: Long) {
+            binding.topTitle.text = title
+            binding.textOrder.text = binding.root.context.getString(
+                if (isReverse) R.string.negative_sequence else R.string.positive_sequence
+            )
+            if (lastIsReverse != isReverse) {
+                lastIsReverse = isReverse
+                lastCurrentAid = currentAid
+                videoAdapter.currentPlayingAid = currentAid
+                val reason = dataChangeReasonFor(videoAdapter.contentCount(), items.size)
+                AppLog.d(
+                    "VideoDetailFocus",
+                    "ugc bind setData reason=$reason oldCount=${videoAdapter.contentCount()} newCount=${items.size} currentAid=$currentAid"
+                )
+                videoAdapter.setData(items) {
+                    tvFocusController?.onDataChanged(reason)
+                    scrollToCurrentVideo(items, currentAid)
+                }
+            } else if (lastCurrentAid != currentAid) {
+                val oldAid = lastCurrentAid
+                lastCurrentAid = currentAid
+                videoAdapter.currentPlayingAid = currentAid
+                val snapshot = videoAdapter.getItemsSnapshot()
+                val oldPos = snapshot.indexOfFirst { it.aid == oldAid }
+                val newPos = snapshot.indexOfFirst { it.aid == currentAid }
+                if (oldPos >= 0) videoAdapter.notifyItemChanged(oldPos)
+                if (newPos >= 0 && newPos != oldPos) videoAdapter.notifyItemChanged(newPos)
+            }
+        }
+
+        private fun scrollToCurrentVideo(items: List<VideoModel>, currentAid: Long) {
+            val currentIndex = items.indexOfFirst { it.aid == currentAid }
+            if (currentIndex < 0) return
+            val llm = binding.recyclerView.layoutManager as? LinearLayoutManager ?: return
+            if (currentIndex > 0) {
+                val halfItemWidth = (ScreenUtils.getScreenWidth(binding.root.context) / 5) / 3
+                llm.scrollToPositionWithOffset(currentIndex - 1, -halfItemWidth)
+            } else {
+                llm.scrollToPosition(0)
+            }
+        }
+    }
+
+    class RelatedLaneViewHolder(
+        private val binding: CellSeriesLaneBinding,
+        onVideoClick: (VideoModel) -> Unit,
+        // 上一行是否合集 lane（按键时刻实时判定，主列表位置由外层反查）
+        private val upperRowIsLane: (RecyclerView.ViewHolder) -> Boolean
+    ) : RecyclerView.ViewHolder(binding.root) {
+
+        private var tvFocusController: TvListFocusController? = null
+        private val videoAdapter = VideoAdapter(
+            itemWidthPx = ScreenUtils.getScreenWidth(binding.root.context) / 5,
+            onItemFocusedWithView = { view, position ->
+                tvFocusController?.onItemFocused(view, position)
+            },
+            onItemDpad = { view, keyCode, event ->
+                val handled = tvFocusController?.handleKey(view, keyCode, event) == true
+                val upperLane = (itemView.parent as? RecyclerView)
+                    ?.getChildViewHolder(itemView)?.let { upperRowIsLane(it) } == true
+                handleLaneUpExit(itemView, keyCode, event, handled, upperLane)
+            }
+        )
+
+        init {
+            videoAdapter.setShowLoadMore(false)
+            binding.recyclerView.layoutManager =
+                LinearLayoutManager(binding.root.context, RecyclerView.HORIZONTAL, false)
+            binding.recyclerView.adapter = videoAdapter
+            VideoRecyclerViewTuning.apply(binding.recyclerView, videoAdapter)
+            tvFocusController = TvListFocusController(
+                recyclerView = binding.recyclerView,
+                adapter = videoAdapter,
+                strategy = LinearTvFocusStrategy(RecyclerView.HORIZONTAL),
+                canLoadMore = { false },
+                loadMore = {},
+                restoreAppendFocusFromOutside = true,
+                restoreFocusOnFocusedDetach = true,
+                debugName = "detail-related"
+            )
+            binding.recyclerView.isFocusable = false
+            binding.buttonOrder.visibility = View.GONE
+            videoAdapter.setOnItemClickListener { _, item ->
+                onVideoClick(item)
+            }
+            bindBackButtonOnScroll(binding.recyclerView)
+        }
+
+        fun bind(items: List<VideoModel>) {
+            binding.topTitle.text = binding.root.context.getString(R.string.related_video)
+            val reason = dataChangeReasonFor(videoAdapter.contentCount(), items.size)
+            AppLog.d(
+                "VideoDetailFocus",
+                "related bind setData reason=$reason oldCount=${videoAdapter.contentCount()} newCount=${items.size}"
+            )
+            videoAdapter.setData(items) {
+                tvFocusController?.onDataChanged(reason)
+            }
+        }
+    }
+
+    /** 评论条按"上"回排序行：聚焦当前选中的排序按钮（热门/最新），几何搜索会飞 Header 标签区。
+     *  排序行在屏外未布局时必须滚动后异步聚焦——UP 已被 keyListener 消费，
+     *  静默返回会让焦点卡死在第一条评论（列表深滚后回顶场景）。 */
+    private fun focusSelectedSortChip(commentHolder: RecyclerView.ViewHolder) {
+        val recyclerView = commentHolder.itemView.parent as? RecyclerView ?: return
+        val position = commentEntryPosition(commentHolder)
+        if (position == RecyclerView.NO_POSITION) return
+        if (getItem(position - 1) !is Row.CommentSort) return
+        focusSortChipAt(recyclerView, position)
+    }
+
+    private fun focusSortChipAt(recyclerView: RecyclerView, position: Int) {
+        val sortRoot = recyclerView.findViewHolderForAdapterPosition(position - 1)?.itemView
+        if (sortRoot != null) {
+            requestSortChipFocus(sortRoot, position)
+            return
+        }
+        // 排序行在屏外：滚过去再聚焦（单次 post，布局同步完成即可命中）
+        recyclerView.scrollToPosition(position - 1)
+        recyclerView.post {
+            recyclerView.findViewHolderForAdapterPosition(position - 1)?.itemView
+                ?.let { requestSortChipFocus(it, position) }
+        }
+    }
+
+    private fun requestSortChipFocus(sortRoot: View, position: Int) {
+        val sortNewSelected = (getItem(position - 1) as Row.CommentSort).sortNewSelected
+        val targetId = if (sortNewSelected) R.id.sort_new else R.id.sort_hot
+        (sortRoot.findViewById<View>(targetId) ?: sortRoot).requestFocus()
+    }
+
+    /** 内层 Vh（未 attach）反查外层评论条目在主列表的真实位置。 */
+    private fun commentEntryPosition(innerHolder: RecyclerView.ViewHolder): Int {
+        val recyclerView = innerHolder.itemView.parent as? RecyclerView ?: return RecyclerView.NO_POSITION
+        val outer = recyclerView.getChildViewHolder(innerHolder.itemView) ?: return RecyclerView.NO_POSITION
+        return outer.bindingAdapterPosition
+    }
+
+    companion object {
+        /**
+         * lane 卡片按"上"离开 lane 时的导航。
+         * 上一行是另一 lane（合集 lane→推荐 lane 叠放）时放行系统几何搜索
+         * （正上方就是上一 lane 的卡片，beam 命中稳定）；上一行是 Tab 栏时系统
+         * 搜索会跳过 Tab（Tab 在左侧而卡片横向满屏，正上方是 Header 元素），
+         * 显式交给 Tab 栏。
+         */
+        internal fun handleLaneUpExit(
+            laneItemView: View,
+            keyCode: Int,
+            event: android.view.KeyEvent,
+            handledByStrategy: Boolean,
+            upperRowIsLane: Boolean = false
+        ): Boolean {
+            if (handledByStrategy) return true
+            if (keyCode != android.view.KeyEvent.KEYCODE_DPAD_UP ||
+                event.action != android.view.KeyEvent.ACTION_DOWN
+            ) {
+                return false
+            }
+            // 上一行是另一 lane：放行系统几何搜索，焦点落上一 lane 的卡片
+            if (upperRowIsLane) return false
+            val mainRecyclerView = laneItemView.parent as? RecyclerView ?: return false
+            val tab = mainRecyclerView.findViewById<View>(R.id.tab_content) ?: return false
+            return tab.requestFocus()
+        }
+
+        private const val VIEW_TYPE_HEADER = 0
+        private const val VIEW_TYPE_PAGES = 1
+        private const val VIEW_TYPE_UGC_SEASON = 2
+        private const val VIEW_TYPE_RELATED = 3
+        private const val VIEW_TYPE_TAB_BAR = 4
+        private const val VIEW_TYPE_COMMENT_SORT = 5
+        private const val VIEW_TYPE_COMMENT_ENTRY = 6
+        private const val VIEW_TYPE_COMMENT_HINT = 7
+
+        internal fun dataChangeReasonFor(oldCount: Int, newCount: Int): TvDataChangeReason {
+            return if (oldCount > 0 && newCount > oldCount) {
+                TvDataChangeReason.APPEND
+            } else {
+                TvDataChangeReason.REPLACE_PRESERVE_ANCHOR
+            }
+        }
+
+        private fun bindBackButtonOnScroll(recyclerView: RecyclerView) {
+            recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+                override fun onScrolled(rv: RecyclerView, dx: Int, dy: Int) {
+                    val llm = rv.layoutManager as? LinearLayoutManager ?: return
+                    val firstPos = llm.findFirstVisibleItemPosition()
+                    for (i in 0 until rv.childCount) {
+                        val child = rv.getChildAt(i)
+                        val vh = rv.getChildViewHolder(child)
+                        child.nextFocusLeftId = if (vh.bindingAdapterPosition == firstPos) {
+                            R.id.button_back_1
+                        } else {
+                            View.NO_ID
+                        }
+                    }
+                }
+            })
+        }
+
+        private val RowItemCallback = object : DiffUtil.ItemCallback<Row>() {
+            override fun areItemsTheSame(oldItem: Row, newItem: Row): Boolean {
+                return stableId(oldItem) == stableId(newItem)
+            }
+
+            override fun areContentsTheSame(oldItem: Row, newItem: Row): Boolean {
+                return oldItem == newItem
+            }
+
+            private fun stableId(row: Row): String {
+                return when (row) {
+                    is Row.Header -> "header"
+                    is Row.Pages -> "pages"
+                    is Row.UgcSeason -> "ugc_season"
+                    is Row.Related -> "related"
+                    is Row.TabBar -> "tab_bar"
+                    is Row.CommentSort -> "comment_sort"
+                    is Row.CommentEntry -> "comment:${row.item.key}"
+                    is Row.CommentHint -> "comment_hint"
+                }
+            }
+        }
+    }
+
+    /**
+     * 内容 Tab 栏。交互对齐首页 tab（实测）：**焦点移动只提亮文字不切选中，
+     * 横条恒跟随选中态，OK/点击激活才移动**（首页 TabLayout 同款：焦点胶囊在热门、
+     * 粉色横条留在选中的推荐下）。横条为单条共享 view，切换时平移动画滑过去
+     * （同首页 SlidingTabStrip 观感）。
+     */
+    class TabBarViewHolder(
+        private val binding: com.mytvb.databinding.CellVideoDetailTabBarBinding,
+        private val onTabSelected: (commentTab: Boolean) -> Unit,
+        // 下一行是否合集 lane（按键时刻实时判定）：是则 tab DOWN 先落正/反序按钮，
+        // 否则放行系统（推荐卡片/评论排序行）
+        private val nextRowIsUgcSeason: (RecyclerView.ViewHolder) -> Boolean
+    ) : RecyclerView.ViewHolder(binding.root) {
+
+        private var commentTabSelected = false
+
+        /** 上一次绑定的选中态：null=首次绑定（横条直接定位），翻转=切换（滑动动画）。 */
+        private var lastSelected: Boolean? = null
+
+        init {
+            binding.tabContent.setOnClickListener { onTabSelected(false) }
+            binding.tabComment.setOnClickListener { onTabSelected(true) }
+            val focusTextRefresher = View.OnFocusChangeListener { _, _ -> applyTextColors() }
+            binding.tabContent.onFocusChangeListener = focusTextRefresher
+            binding.tabComment.onFocusChangeListener = focusTextRefresher
+            val downNavigation = View.OnKeyListener { _, keyCode, event ->
+                if (keyCode != android.view.KeyEvent.KEYCODE_DPAD_DOWN ||
+                    event.action != android.view.KeyEvent.ACTION_DOWN
+                ) {
+                    return@OnKeyListener false
+                }
+                val recyclerView = itemView.parent as? RecyclerView
+                    ?: return@OnKeyListener false
+                val position = bindingAdapterPosition
+                if (position == RecyclerView.NO_POSITION) return@OnKeyListener false
+                if (!nextRowIsUgcSeason(this)) return@OnKeyListener false
+                val laneRoot = recyclerView.findViewHolderForAdapterPosition(position + 1)?.itemView
+                if (laneRoot != null) {
+                    (laneRoot.findViewById<View>(R.id.button_order) ?: laneRoot).requestFocus()
+                } else {
+                    recyclerView.scrollToPosition(position + 1)
+                    recyclerView.post {
+                        recyclerView.findViewHolderForAdapterPosition(position + 1)?.itemView
+                            ?.findViewById<View>(R.id.button_order)?.requestFocus()
+                    }
+                }
+                true
+            }
+            binding.tabContent.setOnKeyListener(downNavigation)
+            binding.tabComment.setOnKeyListener(downNavigation)
+        }
+
+        fun bind(contentTabText: String, commentTabSelected: Boolean, commentCountText: String) {
+            this.commentTabSelected = commentTabSelected
+            binding.textTabContent.text = contentTabText
+            binding.textTabCommentCount.text = commentCountText
+            applyTextColors()
+            // 横条纯选中态：OK 激活切换后才移动；首次/复用定位不动画，状态翻转滑动
+            val animate = lastSelected != null && lastSelected != commentTabSelected
+            lastSelected = commentTabSelected
+            moveIndicator(animate)
+        }
+
+        /** 横条移到选中 tab 下方居中；切换时平移动画。 */
+        private fun moveIndicator(animate: Boolean) {
+            val target = if (commentTabSelected) binding.tabComment else binding.tabContent
+            binding.root.post {
+                val indicator = binding.tabIndicator
+                if (indicator.width <= 0 || target.width <= 0) {
+                    indicator.translationX = target.left.toFloat()
+                    return@post
+                }
+                val center = target.left + (target.width - indicator.width) / 2f
+                if (animate) {
+                    // 250ms 对齐首页 TabLayout 指示器滑动观感
+                    indicator.animate().translationX(center).setDuration(250L).start()
+                } else {
+                    indicator.animate().cancel()
+                    indicator.translationX = center
+                }
+            }
+        }
+
+        /** 焦点 tab 文字提亮白（同首页惯例）；失焦按各自选中态取色。 */
+        private fun applyTextColors() {
+            val context = binding.root.context
+            val focusedColor = ContextCompat.getColor(context, R.color.textColor)
+            val unselectedColor = ContextCompat.getColor(context, R.color.subTextColor)
+            binding.textTabContent.setTextColor(
+                when {
+                    binding.tabContent.hasFocus() -> focusedColor
+                    !commentTabSelected -> focusedColor
+                    else -> unselectedColor
+                }
+            )
+            binding.textTabComment.setTextColor(
+                when {
+                    binding.tabComment.hasFocus() -> focusedColor
+                    commentTabSelected -> focusedColor
+                    else -> unselectedColor
+                }
+            )
+            binding.textTabCommentCount.setTextColor(
+                when {
+                    binding.tabComment.hasFocus() -> focusedColor
+                    commentTabSelected -> ContextCompat.getColor(context, R.color.pink)
+                    else -> unselectedColor
+                }
+            )
+        }
+    }
+
+    /** 评论区排序行：焦点只高亮不切换，OK/点击才切换（对齐播放页评论面板惯例）。 */
+    class CommentSortViewHolder(
+        private val binding: com.mytvb.databinding.CellCommentSortBinding,
+        private val onSortSelected: (sortNew: Boolean) -> Unit
+    ) : RecyclerView.ViewHolder(binding.root) {
+
+        init {
+            binding.sortHot.setOnClickListener { onSortSelected(false) }
+            binding.sortNew.setOnClickListener { onSortSelected(true) }
+            // 按"下"显式落第一条评论：评论条目在屏外/未布局时系统几何搜索会飞到
+            // Header 标签区（实测 UP 反向同病），主列表内显式导航兜住
+            val downKeyListener = View.OnKeyListener { _, keyCode, event ->
+                if (keyCode != android.view.KeyEvent.KEYCODE_DPAD_DOWN ||
+                    event.action != android.view.KeyEvent.ACTION_DOWN
+                ) {
+                    return@OnKeyListener false
+                }
+                val recyclerView = itemView.parent as? RecyclerView
+                    ?: return@OnKeyListener false
+                val position = bindingAdapterPosition
+                if (position == RecyclerView.NO_POSITION) return@OnKeyListener false
+                val next = recyclerView.findViewHolderForAdapterPosition(position + 1)?.itemView
+                if (next != null && next.requestFocus()) {
+                    return@OnKeyListener true
+                }
+                // 目标未布局（屏外）：滚过去再聚焦；加载中无评论时消费防飞出
+                recyclerView.scrollToPosition(position + 1)
+                recyclerView.post {
+                    recyclerView.findViewHolderForAdapterPosition(position + 1)?.itemView?.requestFocus()
+                }
+                true
+            }
+            binding.sortHot.setOnKeyListener(downKeyListener)
+            binding.sortNew.setOnKeyListener(downKeyListener)
+        }
+
+        fun bind(sortNewSelected: Boolean) {
+            val selected = ContextCompat.getColor(binding.root.context, R.color.textColor)
+            val unselected = ContextCompat.getColor(binding.root.context, R.color.subTextColor)
+            binding.sortHot.isSelected = !sortNewSelected
+            binding.sortNew.isSelected = sortNewSelected
+            binding.sortHot.setTextColor(if (sortNewSelected) unselected else selected)
+            binding.sortNew.setTextColor(if (sortNewSelected) selected else unselected)
+        }
+    }
+
+    /** 评论条：直接复用播放页评论面板的 [VideoCommentsAdapter.Vh] 渲染（表情/图片/展开收起/楼中楼预览全套）。 */
+    class CommentEntryViewHolder(
+        binding: com.mytvb.databinding.ItemCommentBinding,
+        isTopEdgeItem: (RecyclerView.ViewHolder) -> Boolean,
+        isBottomEdgeItem: (RecyclerView.ViewHolder) -> Boolean,
+        onCommentTopEdge: (RecyclerView.ViewHolder) -> Unit,
+        private val onCommentItemFocused: () -> Unit
+    ) : RecyclerView.ViewHolder(binding.root) {
+
+        private val vh = VideoCommentsAdapter.Vh(
+            binding,
+            onTopEdge = { onCommentTopEdge(this) },
+            isTopEdgeItem = isTopEdgeItem,
+            isBottomEdgeItem = isBottomEdgeItem
+        )
+
+        fun bind(
+            item: com.mytvb.feature.player.comment.VideoCommentItem,
+            isExpanded: Boolean,
+            onToggleExpand: (Long) -> Unit,
+            onClick: (com.mytvb.feature.player.comment.VideoCommentItem) -> Unit,
+            onLongClick: (com.mytvb.feature.player.comment.VideoCommentItem) -> Boolean,
+            onPictureClick: (com.mytvb.feature.player.comment.VideoCommentItem, Int) -> Unit
+        ) {
+            vh.bind(
+                item = item,
+                isExpanded = isExpanded,
+                expandFully = false,
+                onToggleExpand = onToggleExpand,
+                onClick = onClick,
+                onTouchClick = {},
+                onPictureClick = onPictureClick,
+                onLongClick = onLongClick,
+                onItemFocused = onCommentItemFocused
+            )
+        }
+    }
+
+    /** 评论区状态提示行（加载中/空/失败），纯展示不可聚焦。 */
+    class CommentHintViewHolder(
+        private val text: AppCompatTextView
+    ) : RecyclerView.ViewHolder(text) {
+
+        fun bind(value: String) {
+            text.text = value
+        }
+    }
+}
+
+internal object VideoDetailHeaderFocusKeys {
+    fun shouldFocusBack(keyCode: Int, action: Int): Boolean {
+        return keyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT &&
+            action == android.view.KeyEvent.ACTION_DOWN
+    }
+}
