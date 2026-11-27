@@ -44,27 +44,27 @@ jobs:
 
       - name: Build debug APK (4 ABIs)
         run: |
-          ./gradlew assembleDebug --no-daemon \
-            -PversionName=${{ inputs.version_name }} \
-            -PversionCode=${{ inputs.version_code }}
+          ./gradlew assembleDebug --no-daemon
 
       - name: Rename APK
+        env:
+          VERSION_NAME: ${{ inputs.version_name || '2.0.22' }}
         run: |
           mkdir -p dist
-          cp app/build/outputs/apk/debug/app-debug.apk dist/blbl-${{ inputs.version_name }}-debug.apk
+          cp app/build/outputs/apk/debug/app-debug.apk dist/blbl-${VERSION_NAME}-debug.apk
           cp app/build/outputs/apk/debug/app-debug.apk dist/blbl-latest-debug.apk
           md5sum dist/*.apk
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: xingbili-${{ inputs.version_name }}-debug
+          name: xingbili-debug
           path: dist/*.apk
 
       - name: Publish debug APK to GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION_NAME: ${{ inputs.version_name }}
+          VERSION_NAME: ${{ inputs.version_name || '2.0.22' }}
         run: |
           TAG="v${VERSION_NAME}-shell"
           if gh release view "$TAG" >/dev/null 2>&1; then

@@ -81,8 +81,10 @@ android {
         applicationId = (project.findProperty("applicationId") as? String) ?: "blbl.cat3399.feed"
         minSdk = 23
         targetSdk = 35
-        versionCode = (project.findProperty("versionCode") as String?)?.toInt() ?: 22
-        versionName = project.findProperty("versionName") as String? ?: "2.0.22"
+        versionCode = (project.findProperty("versionCode") as? String)
+            ?.takeIf { it.isNotBlank() }?.toIntOrNull() ?: 22
+        versionName = (project.findProperty("versionName") as? String)
+            ?.takeIf { it.isNotBlank() } ?: "2.0.22"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
