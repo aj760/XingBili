@@ -1,6 +1,8 @@
 name: XingBili Debug Build
 
 on:
+  push:
+    branches: [mytvb-shell]
   workflow_dispatch:
     inputs:
       version_name:
